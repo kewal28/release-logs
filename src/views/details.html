@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Pie - Change Log</title>
+    <!-- App favicon -->
+    <link rel="shortcut icon" href="https://billingpie.in/assets/images/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/js/utils.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-xl font-semibold text-gray-900 hover:text-indigo-600">Release Log</a>
+                    <button id="backButton" class="flex items-center space-x-2 text-sm text-gray-600 hover:text-indigo-600 transition-colors">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to Changelogs</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Changelog Info -->
+        <div id="changelogInfo" class="bg-white shadow rounded-lg p-6 mb-6">
+            <div id="loadingChangelog" class="text-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                <p class="mt-2 text-gray-600">Loading changelog...</p>
+            </div>
+            <div id="changelogContent" class="hidden"></div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-medium text-gray-900">Comments</h2>
+                    <button id="addCommentBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                        <i class="fas fa-plus mr-2"></i>Add Comment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Comments List -->
+            <div id="commentsList" class="divide-y divide-gray-200">
+                <!-- Loading state -->
+                <div id="loadingComments" class="text-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-2 text-gray-600">Loading comments...</p>
+                </div>
+
+                <!-- Empty state -->
+                <div id="emptyComments" class="hidden text-center py-12">
+                    <i class="fas fa-comments text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">No comments yet</p>
+                    <p class="text-sm text-gray-500 mt-2">Be the first to share your thoughts!</p>
+                </div>
+
+                <!-- Comments Container -->
+                <div id="commentsContainer" class="hidden"></div>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="hidden px-6 py-4 border-t border-gray-200">
+                <nav class="flex items-center justify-between">
+                    <div class="flex-1 flex justify-between sm:hidden">
+                        <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Previous
+                        </button>
+                        <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Next
+                        </button>
+                    </div>
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Showing <span id="startItem">1</span> to <span id="endItem">10</span> of <span id="totalItems">0</span> comments
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    Previous
+                                </button>
+                                <div id="pageNumbers" class="flex"></div>
+                                <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    Next
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Comment Modal -->
+    <div id="commentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Add Comment</h3>
+                    <button id="closeCommentModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <form id="commentForm" class="space-y-4">
+                    <div>
+                        <label for="authorName" class="block text-sm font-medium text-gray-700">Name *</label>
+                        <input type="text" id="authorName" name="author_name" required 
+                               class="mt-1 block w-full bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label for="authorEmail" class="block text-sm font-medium text-gray-700">Email *</label>
+                        <input type="email" id="authorEmail" name="author_email" required 
+                               class="mt-1 block w-full bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label for="commentContent" class="block text-sm font-medium text-gray-700">Comment *</label>
+                        <textarea id="commentContent" name="content" rows="4" required 
+                                  class="mt-1 block bg-white w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+
+                    <!-- Honeypot field -->
+                    <input type="text" name="_gotcha" style="display: none;" tabindex="-1" autocomplete="off">
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelCommentBtn" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" id="submitCommentBtn" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                            Submit Comment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalComments = 0;
+        let commentsPerPage = 10;
+        let changelogId = null;
+        let changelogSlug = null;
+        let appSettings = {};
+
+        // Load application settings
+        async function loadAppSettings() {
+            try {
+                const response = await Utils.Api.apiRequest('/public/settings');
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load settings');
+                appSettings = data.config;
+                applyAppSettings();
+            } catch (error) {
+                console.error('Error loading app settings:', error);
+        }
+        }
+
+        function applyAppSettings() {
+            // Apply company name and logo
+            const companyName = document.querySelector('a[href="/"]');
+            const header = document.querySelector('header .flex.items-center');
+
+            // Handle company name and logo logic
+            if (appSettings.company?.logo) {
+                // Logo is provided - show logo and hide company name
+                if (!document.getElementById('company-logo')) {
+                    const logoContainer = document.createElement('div');
+                    logoContainer.className = 'mr-3';
+                    logoContainer.innerHTML = `<img id="company-logo" src="${appSettings.company.logo}" alt="Company Logo" class="h-16 w-auto">`;
+                    header.insertBefore(logoContainer, companyName);
+                }
+                if (companyName) {
+                    companyName.classList.add('hidden');
+                }
+                
+                // Use company name for title if available, otherwise use "Release Log"
+                const titleText = appSettings.company?.name || 'Release Log';
+                document.title = `${titleText} - Comments`;
+            } else if (appSettings.company?.name && companyName) {
+                // Only company name is provided - show name and hide logo
+                companyName.textContent = appSettings.company.name;
+                companyName.classList.remove('hidden');
+                const existingLogo = document.getElementById('company-logo');
+                if (existingLogo && existingLogo.parentElement) {
+                    existingLogo.parentElement.remove();
+                }
+                document.title = `${appSettings.company.name} - Comments`;
+            } else {
+                // Neither provided - show default
+                if (companyName) {
+                    companyName.textContent = 'Release Log';
+                    companyName.classList.remove('hidden');
+                }
+                const existingLogo = document.getElementById('company-logo');
+                if (existingLogo && existingLogo.parentElement) {
+                    existingLogo.parentElement.remove();
+                }
+                document.title = 'Release Log - Comments';
+            }
+
+            // Apply theme
+            if (appSettings.appearance?.theme) {
+                applyTheme(appSettings.appearance.theme);
+            }
+        }
+
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            const themeColors = {
+                indigo: { primary: '#4F46E5', hover: '#4338CA' },
+                blue: { primary: '#2563EB', hover: '#1D4ED8' },
+                green: { primary: '#059669', hover: '#047857' },
+                purple: { primary: '#7C3AED', hover: '#6D28D9' },
+                red: { primary: '#DC2626', hover: '#B91C1C' }
+            };
+
+            const colors = themeColors[theme] || themeColors.indigo;
+            
+            // Update CSS custom properties
+            root.style.setProperty('--primary-color', colors.primary);
+            root.style.setProperty('--primary-hover', colors.hover);
+
+            // Update button colors only (not inputs/textareas)
+            const buttons = document.querySelectorAll('button.bg-indigo-600, button.hover\\:bg-indigo-700, button.focus\\:ring-indigo-500, button.focus\\:border-indigo-500');
+            buttons.forEach(button => {
+                button.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'focus:ring-indigo-500', 'focus:border-indigo-500');
+                button.style.backgroundColor = colors.primary;
+                button.style.setProperty('--tw-bg-opacity', '1');
+            });
+        }
+
+        // Get changelog slug from URL
+        function getChangelogSlug() {
+            const pathParts = window.location.pathname.split('/');
+            return pathParts[pathParts.length - 1];
+        }
+
+        // Load changelog info
+        async function loadChangelog() {
+            try {
+                console.log('Loading changelog with slug:', changelogSlug);
+                const response = await Utils.Api.apiRequest(`/changelogs/${changelogSlug}`);
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelog');
+
+                console.log('API Response:', data);
+
+                if (!data.changelog) {
+                    console.error('No changelog data in response:', data);
+                    Utils.Toast.showError('Invalid changelog data received');
+                    return;
+                }
+
+                changelogId = data.changelog.id; // Store the numeric ID for comments API
+                renderChangelog(data.changelog);
+            } catch (error) {
+                console.error('Error loading changelog:', error);
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        function setMeta(name, content, property = false) {
+            let el;
+            if (property) {
+                el = document.querySelector(`meta[property='${name}']`);
+            } else {
+                el = document.querySelector(`meta[name='${name}']`);
+            }
+            if (!el) {
+                el = document.createElement('meta');
+                if (property) {
+                    el.setAttribute('property', name);
+                } else {
+                    el.setAttribute('name', name);
+                }
+                document.head.appendChild(el);
+            }
+            el.setAttribute('content', content);
+        }
+
+        function renderChangelog(changelog) {
+            const loadingDiv = document.getElementById('loadingChangelog');
+            const contentDiv = document.getElementById('changelogContent');
+
+            loadingDiv.classList.add('hidden');
+            contentDiv.classList.remove('hidden');
+
+            // SEO meta tags
+            document.title = `${changelog.title} - ${(appSettings.company?.name || 'Release Log')}`;
+            setMeta('description', changelog.body ? changelog.body.replace(/<[^>]+>/g, '').slice(0, 160) : '', false);
+            setMeta('og:title', changelog.title, true);
+            setMeta('og:description', changelog.body ? changelog.body.replace(/<[^>]+>/g, '').slice(0, 160) : '', true);
+            setMeta('og:image', (changelog.images && changelog.images.length > 0) ? changelog.images[0].url : '', true);
+            setMeta('og:type', 'article', true);
+            setMeta('og:url', window.location.href, true);
+
+            // Debug logging
+            console.log('Changelog data:', changelog);
+            console.log('Published at:', changelog.published_at);
+            console.log('Created at:', changelog.created_at);
+
+            contentDiv.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <h1 class="text-2xl font-bold text-gray-900">${changelog.title || 'Untitled'}</h1>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${Utils.Label.getLabelColor(changelog.label)}">
+                                <i class="${Utils.Label.getLabelIcon(changelog.label)} mr-1"></i>
+                                ${changelog.label || 'unknown'}
+                            </span>
+                        </div>
+                        
+                        <div class="prose max-w-none text-gray-700 mb-4">
+                            ${changelog.body || 'No content available'}
+                        </div>
+
+                        ${changelog.images && changelog.images.length > 0 ? `
+                            <div class="mb-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    ${changelog.images.map(image => `
+                                        <img src="${image.url}" alt="Changelog image" 
+                                             class="w-full h-48 object-cover rounded-lg shadow-sm">
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="flex items-center justify-between text-sm text-gray-500">
+                            <div class="flex items-center space-x-4">
+                                <span>By ${changelog.author_name || 'Unknown'}</span>
+                                <span>${Utils.Date.formatDateWithFallback(changelog.published_at, changelog.created_at, true)}</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="flex items-center space-x-1">
+                                    <i class="fas fa-thumbs-up text-green-600"></i>
+                                    <span>${changelog.upvotes || 0}</span>
+                                </span>
+                                <span class="flex items-center space-x-1">
+                                    <i class="fas fa-thumbs-down text-red-600"></i>
+                                    <span>${changelog.downvotes || 0}</span>
+                                </span>
+                                <span class="flex items-center space-x-1">
+                                    <i class="fas fa-comment text-indigo-600"></i>
+                                    <span>${changelog.comments || 0}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load comments
+        async function loadComments() {
+            try {
+                const response = await Utils.Api.apiRequest(`/changelogs/${changelogId}/comments?page=${currentPage}&limit=${commentsPerPage}`);
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load comments');
+
+                totalComments = data.pagination.total;
+                totalPages = data.pagination.pages;
+                renderComments(data.comments);
+                Utils.Pagination.renderPagination(data.pagination, currentPage, totalPages, (page) => {
+                    currentPage = page;
+                    loadComments();
+                });
+            } catch (error) {
+                console.error('Error loading comments:', error);
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        function renderComments(comments) {
+            const loadingDiv = document.getElementById('loadingComments');
+            const emptyDiv = document.getElementById('emptyComments');
+            const container = document.getElementById('commentsContainer');
+
+            loadingDiv.classList.add('hidden');
+
+            if (comments.length === 0) {
+                container.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            emptyDiv.classList.add('hidden');
+
+            container.innerHTML = comments.map(comment => `
+                <div class="px-6 py-4">
+                    <div class="flex space-x-3">
+                        <div class="flex-shrink-0">
+                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <i class="fas fa-user text-indigo-600"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <p class="text-sm font-medium text-gray-900">${comment.author_name}</p>
+                                <span class="text-sm text-gray-500">${Utils.Date.formatDate(comment.created_at, true)}</span>
+                            </div>
+                            <div class="mt-1 text-sm text-gray-700">
+                                ${comment.content}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Comment modal functions
+        function showCommentModal() {
+            Utils.Modal.showModal('commentModal');
+        }
+
+        function hideCommentModal() {
+            Utils.Modal.hideModal('commentModal');
+        }
+
+        async function submitComment(commentData) {
+            try {
+                const response = await Utils.Api.apiRequest(`/changelogs/${changelogId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(commentData)
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to submit comment');
+
+                hideCommentModal();
+                currentPage = 1; // Reset to first page
+                loadComments(); // Reload comments
+                Utils.Toast.showSuccess(data.message);
+            } catch (error) {
+                console.error('Error submitting comment:', error);
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('addCommentBtn').addEventListener('click', showCommentModal);
+        document.getElementById('closeCommentModal').addEventListener('click', hideCommentModal);
+        document.getElementById('cancelCommentBtn').addEventListener('click', hideCommentModal);
+        
+        // Back button functionality
+        document.getElementById('backButton').addEventListener('click', () => {
+            // Check if we came from a specific page or just go to home
+            if (document.referrer && document.referrer.includes(window.location.origin)) {
+                window.history.back();
+            } else {
+                window.location.href = '/';
+            }
+        });
+
+        document.getElementById('commentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const commentData = {
+                author_name: document.getElementById('authorName').value,
+                author_email: document.getElementById('authorEmail').value,
+                content: document.getElementById('commentContent').value,
+                _gotcha: document.querySelector('input[name="_gotcha"]').value
+            };
+            submitComment(commentData);
+        });
+
+        // Initialize page
+        window.addEventListener('load', async () => {
+            await loadAppSettings();
+            changelogSlug = getChangelogSlug();
+            console.log('Initial changelogSlug:', changelogSlug);
+            if (changelogSlug) {
+                await loadChangelog();
+                loadComments();
+            } else {
+                Utils.Toast.showError('Invalid changelog ID');
+            }
+        });
+    </script>
+</body>
+</html> 

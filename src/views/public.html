@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Pie - Release Log</title>
+    <meta name="description" content="See the latest updates, features, and bug fixes for Billing Pie. Stay up to date with our changelog.">
+    <meta property="og:title" content="Billing Pie - Release Log">
+    <meta property="og:description" content="See the latest updates, features, and bug fixes for Billing Pie. Stay up to date with our changelog.">
+    <meta property="og:image" content="https://billingpie.in/assets/images/favicon.ico">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://release.billingpie.in">
+    <link rel="shortcut icon" href="https://billingpie.in/assets/images/favicon.ico">
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch(e){}
+      })();
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/js/utils.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 dark:text-white">
+    <!-- Header -->
+    <header id="mainHeader" class="bg-white dark:bg-gray-900 dark:text-white shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div id="logo-container" class="hidden">
+                        <img id="company-logo" src="" alt="Company Logo" class="h-16 w-auto">
+                    </div>
+                    <h1 id="company-name" class="text-xl font-semibold text-gray-900">Release Log</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Dark/Light mode toggle -->
+                    <!-- <button id="themeToggle" class="text-sm text-gray-600 hover:text-indigo-800 focus:outline-none flex items-center" aria-label="Toggle dark mode">
+                        <i id="themeIcon" class="fas fa-moon"></i>
+                        <span class="ml-2">Dark Mode</span>
+                    </button> -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex justify-between items-center">
+                <h2 id="latestUpdates" class="text-2xl font-bold text-gray-900">Latest Updates</h2>
+                <div class="flex space-x-2">
+                    <select id="labelFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-900">
+                        <option value="">All Types</option>
+                        <option value="feature">Features</option>
+                        <option value="bug">Bug Fixes</option>
+                        <option value="optimization">Optimizations</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Changelogs List -->
+        <div id="changelogsList" class="space-y-6 bg-transparent dark:bg-gray-900">
+            <!-- Loading state -->
+            <div id="loadingState" class="text-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                <p class="mt-2 text-gray-600">Loading changelogs...</p>
+            </div>
+
+            <!-- Empty state -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-file-alt text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-600">No changelogs found</p>
+            </div>
+
+            <!-- Changelogs -->
+            <div id="changelogsContainer" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6 bg-transparent dark:bg-gray-900"></div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="hidden mt-8 flex items-center justify-center">
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Previous
+                </button>
+                <div id="pageNumbers" class="flex"></div>
+                <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Next
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Comment Modal -->
+    <div id="commentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Add Comment</h3>
+                    <button id="closeCommentModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <form id="commentForm" class="space-y-4">
+                    <input type="hidden" id="commentChangelogId">
+                    
+                    <div>
+                        <label for="authorName" class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="authorName" name="author_name" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label for="authorEmail" class="block text-sm font-medium text-gray-700">Email (optional)</label>
+                        <input type="email" id="authorEmail" name="author_email" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label for="commentContent" class="block text-sm font-medium text-gray-700">Comment</label>
+                        <textarea id="commentContent" name="content" rows="4" required 
+                                  class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+
+                    <!-- Honeypot field -->
+                    <input type="text" name="_gotcha" style="display: none;" tabindex="-1" autocomplete="off">
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelCommentBtn" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" id="submitCommentBtn" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                            Submit Comment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPage = 1;
+        let totalPages = 1;
+        let changelogs = [];
+        let appSettings = {};
+
+        // Load application settings
+        async function loadAppSettings() {
+            try {
+                const response = await Utils.Api.apiRequest('/public/settings');
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load settings');
+                appSettings = data.config;
+                applyAppSettings();
+            } catch (error) {
+                console.error('Error loading app settings:', error);
+            }
+        }
+
+        function applyAppSettings() {
+            // Apply company name and logo
+            const companyName = document.getElementById('company-name');
+            const logoContainer = document.getElementById('logo-container');
+            const companyLogo = document.getElementById('company-logo');
+
+            // Handle company name and logo logic
+            if (appSettings.company?.logo) {
+                // Logo is provided - show logo and hide company name
+                companyLogo.src = appSettings.company.logo;
+                logoContainer.classList.remove('hidden');
+                companyName.classList.add('hidden');
+                
+                // Use company name for title if available, otherwise use "Release Log"
+                const titleText = appSettings.company?.name || 'Release Log';
+                document.title = `${titleText} - Changelog`;
+            } else if (appSettings.company?.name) {
+                // Only company name is provided - show name and hide logo
+                companyName.textContent = appSettings.company.name;
+                companyName.classList.remove('hidden');
+                logoContainer.classList.add('hidden');
+                document.title = `${appSettings.company.name} - Changelog`;
+            } else {
+                // Neither provided - show default
+                companyName.textContent = 'Release Log';
+                companyName.classList.remove('hidden');
+                logoContainer.classList.add('hidden');
+                document.title = 'Release Log - Changelog';
+            }
+
+            // Apply theme
+            if (appSettings.appearance?.theme) {
+                applyTheme(appSettings.appearance.theme);
+            }
+        }
+
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            const themeColors = {
+                indigo: { primary: '#4F46E5', hover: '#4338CA' },
+                blue: { primary: '#2563EB', hover: '#1D4ED8' },
+                green: { primary: '#059669', hover: '#047857' },
+                purple: { primary: '#7C3AED', hover: '#6D28D9' },
+                red: { primary: '#DC2626', hover: '#B91C1C' }
+            };
+
+            const colors = themeColors[theme] || themeColors.indigo;
+            
+            // Update CSS custom properties
+            root.style.setProperty('--primary-color', colors.primary);
+            root.style.setProperty('--primary-hover', colors.hover);
+
+            // Update button colors
+            const buttons = document.querySelectorAll('.bg-indigo-600, .hover\\:bg-indigo-700, .focus\\:ring-indigo-500, .focus\\:border-indigo-500');
+            buttons.forEach(button => {
+                button.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'focus:ring-indigo-500', 'focus:border-indigo-500');
+                button.classList.add(`bg-[${colors.primary}]`, `hover:bg-[${colors.hover}]`, `focus:ring-[${colors.primary}]`, `focus:border-[${colors.primary}]`);
+            });
+        }
+
+        async function loadChangelogs() {
+            try {
+                Utils.UI.showLoading('loadingState', 'emptyState', 'changelogsContainer');
+                const label = document.getElementById('labelFilter').value;
+                const response = await Utils.Api.apiRequest(`/changelogs?page=${currentPage}&limit=10${label ? `&label=${label}` : ''}`);
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelogs');
+
+                changelogs = data.changelogs;
+                totalPages = data.pagination.pages;
+                renderChangelogs();
+                Utils.Pagination.renderPagination(data.pagination, currentPage, totalPages, (page) => {
+                    currentPage = page;
+                    loadChangelogs();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            } catch (error) {
+                console.error('Error loading changelogs:', error);
+                Utils.Toast.showError(error.message);
+            } finally {
+                Utils.UI.hideLoading('loadingState');
+            }
+        }
+
+        function renderChangelogs() {
+            const container = document.getElementById('changelogsContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            if (changelogs.length === 0) {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            container.innerHTML = changelogs.map(changelog => `
+                <div class="release-card bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                        <a href="/details/${changelog.slug}" class="release-link hover:text-indigo-600 hover:underline cursor-pointer">${changelog.title}</a>
+                                    </h3>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${Utils.Label.getLabelColor(changelog.label)}">
+                                        <i class="${Utils.Label.getLabelIcon(changelog.label)} mr-1"></i>
+                                        ${changelog.label}
+                                    </span>
+                                </div>
+                                
+                                <div class="prose max-w-none text-gray-700 dark:text-gray-200 mb-4">
+                                    ${changelog.body}
+                                </div>
+
+                                ${changelog.images && changelog.images.length > 0 ? `
+                                    <div class="mb-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            ${changelog.images.map(image => `
+                                                <a href="${image.url}" target="_blank" rel="noopener noreferrer">
+                                                    <img src="${image.url}" alt="Billing Pie - ${changelog.title}" 
+                                                        class="w-full object-cover rounded-lg shadow-sm" style="width:100%">
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="flex items-center space-x-4">
+                                        <span class="release-author">By ${changelog.author_name}</span>
+                                        <span class="release-date">${Utils.Date.formatDateWithFallback(changelog.published_at, changelog.created_at)}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-4">
+                                        <button class="vote-btn upvote-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-green-600" 
+                                                data-changelog-id="${changelog.id}" data-vote-type="upvote">
+                                            <i class="fas fa-thumbs-up"></i>
+                                            <span>${changelog.upvotes}</span>
+                                        </button>
+                                        <button class="vote-btn downvote-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-red-600" 
+                                                data-changelog-id="${changelog.id}" data-vote-type="downvote">
+                                            <i class="fas fa-thumbs-down"></i>
+                                            <span>${changelog.downvotes}</span>
+                                        </button>
+                                        <button class="comment-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300" 
+                                                data-changelog-id="${changelog.id}">
+                                            <i class="fas fa-comment"></i>
+                                            <span>${changelog.comments}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add event delegation for button clicks
+            addPublicEventListeners();
+        }
+        
+        function addPublicEventListeners() {
+            const container = document.getElementById('changelogsContainer');
+            
+            // Vote button clicks
+            container.addEventListener('click', (e) => {
+                if (e.target.closest('.vote-btn')) {
+                    const btn = e.target.closest('.vote-btn');
+                    const changelogId = parseInt(btn.dataset.changelogId);
+                    const voteType = btn.dataset.voteType;
+                    voteChangelog(changelogId, voteType);
+                }
+            });
+            
+            // Comment button clicks
+            container.addEventListener('click', (e) => {
+                if (e.target.closest('.comment-btn')) {
+                    const btn = e.target.closest('.comment-btn');
+                    const changelogId = parseInt(btn.dataset.changelogId);
+                    const changelog = changelogs.find(c => c.id === changelogId);
+                    if (changelog && changelog.slug) {
+                        window.location.href = `/details/${changelog.slug}`;
+                    } else {
+                        window.location.href = `/details/${changelogId}`;
+                    }
+                }
+            });
+        }
+
+        // Voting functions
+        async function voteChangelog(id, voteType) {
+            try {
+                const response = await Utils.Api.apiRequest(`/changelogs/${id}/vote`, {
+                    method: 'POST',
+                    body: JSON.stringify({ vote_type: voteType })
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to vote');
+
+                // Reload changelogs to update vote counts
+                loadChangelogs();
+            } catch (error) {
+                console.error('Error voting:', error);
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        // Comment functions
+        function showCommentModal(changelogId) {
+            document.getElementById('commentChangelogId').value = changelogId;
+            document.getElementById('commentModal').classList.remove('hidden');
+        }
+
+        function hideCommentModal() {
+            document.getElementById('commentModal').classList.add('hidden');
+            document.getElementById('commentForm').reset();
+        }
+
+        async function submitComment(commentData) {
+            const changelogId = document.getElementById('commentChangelogId').value;
+
+            try {
+                const response = await apiRequest(`/changelogs/${changelogId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(commentData)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to submit comment');
+                }
+
+                hideCommentModal();
+                loadChangelogs(); // Reload to show new comment count
+                alert(data.message);
+            } catch (error) {
+                console.error('Error submitting comment:', error);
+                showError(error.message);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('labelFilter').addEventListener('change', () => {
+            currentPage = 1;
+            loadChangelogs();
+        });
+
+        document.getElementById('closeCommentModal').addEventListener('click', hideCommentModal);
+        document.getElementById('cancelCommentBtn').addEventListener('click', hideCommentModal);
+
+        document.getElementById('commentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Gather form data as JSON
+            const commentData = {
+                author_name: document.getElementById('authorName').value,
+                author_email: document.getElementById('authorEmail').value,
+                content: document.getElementById('commentContent').value,
+                _gotcha: document.querySelector('input[name="_gotcha"]').value
+            };
+            submitComment(commentData);
+        });
+
+        // Load changelogs on page load
+        window.addEventListener('load', async () => {
+            await loadAppSettings();
+            loadChangelogs();
+        });
+
+        // Theme toggle logic
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeText = themeToggle.querySelector('span');
+        const mainHeader = document.getElementById('mainHeader');
+        const latestUpdates = document.getElementById('latestUpdates');
+        const labelFilter = document.getElementById('labelFilter');
+
+        function updateThemeButton() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+                themeText.textContent = 'Light Mode';
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+                themeText.textContent = 'Dark Mode';
+            }
+        }
+
+        // On load, set button state
+        document.addEventListener('DOMContentLoaded', () => {
+            updateThemeButton();
+        });
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateThemeButton();
+        });
+    </script>
+</body>
+</html> 

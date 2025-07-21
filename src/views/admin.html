@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Release Log - Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="/js/utils.js"></script>
+    <style>
+        .rich-text-btn {
+            @apply px-2 py-1 rounded text-gray-600 hover:bg-gray-200 hover:text-gray-800 transition-colors;
+        }
+        .rich-text-btn.active {
+            @apply bg-indigo-100 text-indigo-700;
+        }
+        #richTextEditor:focus {
+            @apply ring-2 ring-indigo-500 ring-opacity-50;
+        }
+        #richTextEditor img {
+            @apply max-w-full h-auto rounded;
+        }
+        #richTextEditor ul, #richTextEditor ol {
+            @apply ml-4;
+        }
+        #richTextEditor li {
+            @apply mb-1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading State -->
+    <div id="loadingState" class="min-h-screen flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginForm" class="hidden min-h-screen flex items-center justify-center">
+        <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
+            <div>
+                <h2 class="text-center text-3xl font-extrabold text-gray-900">
+                    Release Log Admin
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    Sign in to manage changelogs
+                </p>
+            </div>
+            <form class="mt-8 space-y-6" id="loginFormElement">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <input id="username" name="username" type="text" required 
+                               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" 
+                               placeholder="Username">
+                    </div>
+                    <div>
+                        <input id="password" name="password" type="password" required 
+                               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" 
+                               placeholder="Password">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" 
+                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Sign in
+                    </button>
+                </div>
+            </form>
+            <div id="loginError" class="hidden text-red-600 text-center"></div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="hidden">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-semibold text-gray-900">Release Log Admin</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="currentUser" class="text-sm text-gray-700"></span>
+                        <button id="changePasswordBtn" class="text-sm text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-key mr-1"></i>Change Password
+                        </button>
+                        <a href="/admin/settings" class="text-sm text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-cog mr-1"></i>Settings
+                        </a>
+                        <button id="logoutBtn" class="text-sm text-red-600 hover:text-red-800">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Tabs -->
+            <div class="px-4 py-6 sm:px-0">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8">
+                        <button id="changelogsTab" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                            Changelogs
+                        </button>
+                        <button id="commentsTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
+                            Comments
+                        </button>
+                        <button id="teamTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
+                            Team Members
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Changelogs Tab Content -->
+            <div id="changelogsTabContent">
+                <!-- Header -->
+                <div class="px-4 py-6 sm:px-0">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">Changelogs</h2>
+                        <button id="newChangelogBtn" 
+                                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <i class="fas fa-plus mr-2"></i>New Changelog
+                        </button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="mt-4 flex space-x-4">
+                        <select id="statusFilter" class="border border-gray-300 rounded-md px-3 py-2">
+                            <option value="all">All Status</option>
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                        </select>
+                    </div>
+                </div>
+
+            <!-- Changelogs List -->
+            <div id="changelogsList" class="bg-white shadow overflow-hidden sm:rounded-md">
+                <!-- Loading state -->
+                <div id="changelogsLoadingState" class="p-8 text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-2 text-gray-600">Loading changelogs...</p>
+                </div>
+
+                <!-- Empty state -->
+                <div id="emptyState" class="hidden p-8 text-center">
+                    <i class="fas fa-file-alt text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">No changelogs found</p>
+                </div>
+
+                <!-- Changelogs table -->
+                <ul id="changelogsTable" class="hidden divide-y divide-gray-200"></ul>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="hidden mt-4 flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </button>
+                    <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span id="startItem">1</span> to <span id="endItem">10</span> of <span id="totalItems">0</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Previous
+                            </button>
+                            <div id="pageNumbers" class="flex"></div>
+                            <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Next
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- Comments Tab Content -->
+            <div id="commentsTabContent" class="hidden">
+                <!-- Header -->
+                <div class="px-4 py-6 sm:px-0">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">Comments</h2>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="mt-4 flex space-x-4">
+                        <select id="commentStatusFilter" class="border border-gray-300 rounded-md px-3 py-2">
+                            <option value="all">All Comments</option>
+                            <option value="approved">Approved</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Comments List -->
+                <div id="commentsList" class="bg-white shadow overflow-hidden sm:rounded-md">
+                    <!-- Loading state -->
+                    <div id="commentsLoadingState" class="p-8 text-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                        <p class="mt-2 text-gray-600">Loading comments...</p>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div id="commentsEmptyState" class="hidden p-8 text-center">
+                        <i class="fas fa-comments text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">No comments found</p>
+                    </div>
+
+                    <!-- Comments table -->
+                    <ul id="commentsTable" class="hidden divide-y divide-gray-200"></ul>
+                </div>
+
+                <!-- Comments Pagination -->
+                <div id="commentsPagination" class="hidden mt-4 flex items-center justify-between">
+                    <div class="flex-1 flex justify-between sm:hidden">
+                        <button id="commentsPrevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Previous
+                        </button>
+                        <button id="commentsNextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Next
+                        </button>
+                    </div>
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Showing <span id="commentsStartItem">1</span> to <span id="commentsEndItem">20</span> of <span id="commentsTotalItems">0</span> results
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                <button id="commentsPrevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    Previous
+                                </button>
+                                <div id="commentsPageNumbers" class="flex"></div>
+                                <button id="commentsNextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    Next
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Team Members Tab Content -->
+        <div id="teamTabContent" class="hidden">
+            <!-- Header -->
+            <div class="px-4 py-6 sm:px-0">
+                                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">Team Members</h2>
+                        <button id="newTeamMemberBtn" 
+                                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 admin-only">
+                            <i class="fas fa-plus mr-2"></i>Add Team Member
+                        </button>
+                    </div>
+
+                <!-- Filters -->
+                <div class="mt-4 flex space-x-4">
+                    <select id="teamRoleFilter" class="border border-gray-300 rounded-md px-3 py-2">
+                        <option value="all">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Team Members List -->
+            <div id="teamMembersList" class="bg-white shadow overflow-hidden sm:rounded-md">
+                <!-- Loading state -->
+                <div id="teamLoadingState" class="p-8 text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-2 text-gray-600">Loading team members...</p>
+                </div>
+
+                <!-- Empty state -->
+                <div id="teamEmptyState" class="hidden p-8 text-center">
+                    <i class="fas fa-users text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">No team members found</p>
+                </div>
+
+                <!-- Team members table -->
+                <ul id="teamMembersTable" class="hidden divide-y divide-gray-200"></ul>
+            </div>
+
+            <!-- Team Pagination -->
+            <div id="teamPagination" class="hidden mt-4 flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button id="teamPrevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </button>
+                    <button id="teamNextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span id="teamStartItem">1</span> to <span id="teamEndItem">10</span> of <span id="teamTotalItems">0</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            <button id="teamPrevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Previous
+                            </button>
+                            <div id="teamPageNumbers" class="flex"></div>
+                            <button id="teamNextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Next
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for creating/editing changelog -->
+    <div id="changelogModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg font-medium text-gray-900">New Changelog</h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <form id="changelogForm" class="space-y-4">
+                    <input type="hidden" id="changelogId">
+                    
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+                        <input type="text" id="title" name="title" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label for="body" class="block text-sm font-medium text-gray-700">Body</label>
+                        <div class="mt-1 border border-gray-300 rounded-md">
+                            <!-- Rich Text Editor Toolbar -->
+                            <div class="border-b border-gray-300 p-2 bg-gray-50 flex flex-wrap gap-2">
+                                <button type="button" class="rich-text-btn" data-command="bold" title="Bold">
+                                    <i class="fas fa-bold"></i>
+                                </button>
+                                <button type="button" class="rich-text-btn" data-command="italic" title="Italic">
+                                    <i class="fas fa-italic"></i>
+                                </button>
+                                <button type="button" class="rich-text-btn" data-command="underline" title="Underline">
+                                    <i class="fas fa-underline"></i>
+                                </button>
+                                <div class="border-l border-gray-300 mx-1"></div>
+                                <button type="button" class="rich-text-btn" data-command="insertUnorderedList" title="Bullet List">
+                                    <i class="fas fa-list-ul"></i>
+                                </button>
+                                <button type="button" class="rich-text-btn" data-command="insertOrderedList" title="Numbered List">
+                                    <i class="fas fa-list-ol"></i>
+                                </button>
+                                <div class="border-l border-gray-300 mx-1"></div>
+                                <label for="imageUpload" class="rich-text-btn cursor-pointer" title="Insert Image">
+                                    <i class="fas fa-image"></i>
+                                    <input type="file" id="imageUpload" accept="image/*" class="hidden" multiple>
+                                </label>
+                            </div>
+                            <!-- Rich Text Editor Content Area -->
+                            <div id="richTextEditor" class="p-3 min-h-32 max-h-64 overflow-y-auto focus:outline-none" contenteditable="true"></div>
+                        </div>
+                        <!-- Hidden textarea to store the HTML content -->
+                        <textarea id="body" name="body" class="hidden"></textarea>
+                        <p class="mt-1 text-sm text-gray-500">Use the toolbar above to format your text and add images</p>
+                    </div>
+
+                    <div>
+                        <label for="label" class="block text-sm font-medium text-gray-700">Label</label>
+                        <select id="label" name="label" required 
+                                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Select a label</option>
+                            <option value="feature">Feature</option>
+                            <option value="bug">Bug</option>
+                            <option value="optimization">Optimization</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                        <select id="status" name="status" required 
+                                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="images" class="block text-sm font-medium text-gray-700">Images</label>
+                        <input type="file" id="images" name="images" multiple accept="image/*" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <p class="mt-1 text-sm text-gray-500">Select multiple images (max 10, 5MB each)</p>
+                    </div>
+
+                    <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelBtn" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" id="saveBtn" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                            Save
+                        </button>
+                        <button type="button" id="publishBtn" class="hidden px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700">
+                            Publish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Change Password</h3>
+                    <button id="closeChangePasswordModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form id="changePasswordForm" class="space-y-4">
+                    <div>
+                        <label for="currentPassword" class="block text-sm font-medium text-gray-700">Current Password</label>
+                        <input type="password" id="currentPassword" name="currentPassword" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Enter your current password">
+                    </div>
+
+                    <div>
+                        <label for="newPassword" class="block text-sm font-medium text-gray-700">New Password</label>
+                        <input type="password" id="newPassword" name="newPassword" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Enter your new password">
+                        <p class="mt-1 text-sm text-gray-500">Password must be at least 6 characters long</p>
+                    </div>
+
+                    <div>
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Confirm your new password">
+                    </div>
+
+                    <div id="changePasswordError" class="hidden text-red-600 text-sm"></div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelChangePasswordBtn" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" id="savePasswordBtn" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                            Change Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Member Modal -->
+    <div id="teamMemberModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="teamModalTitle" class="text-lg font-medium text-gray-900">Add Team Member</h3>
+                    <button id="closeTeamModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form id="teamMemberForm" class="space-y-4">
+                    <input type="hidden" id="teamMemberId">
+                    
+                    <div>
+                        <label for="teamUsername" class="block text-sm font-medium text-gray-700">Username</label>
+                        <input type="text" id="teamUsername" name="username" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Enter username">
+                        <p class="mt-1 text-sm text-gray-500">Username can only contain letters, numbers, and underscores</p>
+                    </div>
+
+                    <div>
+                        <label for="teamEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="teamEmail" name="email" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Enter email address">
+                    </div>
+
+                    <div>
+                        <label for="teamPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="teamPassword" name="password" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Enter password">
+                        <p class="mt-1 text-sm text-gray-500">Password must be at least 6 characters long</p>
+                    </div>
+
+                    <div>
+                        <label for="teamRole" class="block text-sm font-medium text-gray-700">Role</label>
+                        <select id="teamRole" name="role" required 
+                                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <p class="mt-1 text-sm text-gray-500">Admins can manage changelogs, comments, and team members</p>
+                    </div>
+
+                    <div id="teamMemberError" class="hidden text-red-600 text-sm"></div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelTeamBtn" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" id="saveTeamBtn" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                            Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let changelogs = [];
+
+        // Authentication functions
+        async function login(username, password) {
+            try {
+                const response = await Utils.Api.apiRequest('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Login failed');
+
+                localStorage.setItem('token', data.token);
+                currentUser = data.user;
+                showDashboard();
+                loadChangelogs();
+            } catch (error) {
+                Utils.UI.showError(error.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            currentUser = null;
+            showLogin();
+        }
+
+
+
+        // Change Password functions
+        function showChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.remove('hidden');
+            document.getElementById('changePasswordForm').reset();
+            document.getElementById('changePasswordError').classList.add('hidden');
+        }
+
+        function hideChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.add('hidden');
+        }
+
+        async function changePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorDiv = document.getElementById('changePasswordError');
+
+            // Clear previous errors
+            errorDiv.classList.add('hidden');
+
+            // Validation
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showChangePasswordError('All fields are required');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showChangePasswordError('New password must be at least 6 characters long');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showChangePasswordError('New passwords do not match');
+                return;
+            }
+
+            try {
+                const response = await Utils.Api.apiRequest('/auth/change-password', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                    })
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to change password');
+
+                Utils.Toast.showSuccess('Password changed successfully!');
+                hideChangePasswordModal();
+            } catch (error) {
+                showChangePasswordError(error.message);
+            }
+        }
+
+        function showChangePasswordError(message) {
+            const errorDiv = document.getElementById('changePasswordError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        async function loadChangelogs() {
+            try {
+                console.log('Loading changelogs...');
+                Utils.UI.showLoading('changelogsLoadingState', 'emptyState', 'changelogsTable');
+                const status = document.getElementById('statusFilter').value;
+                console.log('Making API request to:', `/admin/changelogs?status=${status}&page=${currentPage}&limit=10`);
+                const response = await Utils.Api.apiRequest(`/admin/changelogs?status=${status}&page=${currentPage}&limit=10`);
+                console.log('API response:', response);
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelogs');
+                console.log('API data:', data);
+
+                changelogs = data.changelogs;
+                totalPages = data.pagination.pages;
+                renderChangelogs();
+                Utils.Pagination.renderPagination(data.pagination, currentPage, totalPages, (page) => {
+                    currentPage = page;
+                    loadChangelogs();
+                });
+            } catch (error) {
+                console.error('Error loading changelogs:', error);
+                Utils.Toast.showError(error.message);
+            } finally {
+                Utils.UI.hideLoading('changelogsLoadingState');
+            }
+        }
+
+        function renderChangelogs() {
+            console.log('Rendering changelogs, currentUser:', currentUser);
+            const table = document.getElementById('changelogsTable');
+            const emptyState = document.getElementById('emptyState');
+
+            if (changelogs.length === 0) {
+                console.log('No changelogs to render');
+                table.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            console.log('Rendering', changelogs.length, 'changelogs');
+            table.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            table.innerHTML = changelogs.map(changelog => `
+                <li class="px-6 py-4 hover:bg-gray-50" data-changelog-id="${changelog.id}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3">
+                                <h3 class="text-lg font-medium text-gray-900">${changelog.title}</h3>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${Utils.Label.getLabelColor(changelog.label)}">
+                                    ${changelog.label}
+                                </span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${Utils.Label.getStatusColor(changelog.status)}">
+                                    ${changelog.status}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-600 line-clamp-2">${changelog.body.substring(0, 150)}${changelog.body.length > 150 ? '...' : ''}</p>
+                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-500">
+                                <span>By ${changelog.author_name}</span>
+                                <span>${Utils.Date.formatDate(changelog.created_at, true)}</span>
+                                <span>👍 ${changelog.upvotes}</span>
+                                <span>💬 ${changelog.comments}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${currentUser && currentUser.is_admin ? `
+                                <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-changelog-id="${changelog.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                ${changelog.status === 'draft' ? 
+                                    `<button class="publish-btn text-green-600 hover:text-green-900" data-changelog-id="${changelog.id}">
+                                        <i class="fas fa-publish"></i>
+                                    </button>` : ''
+                                }
+                                <button class="delete-btn text-red-600 hover:text-red-900" data-changelog-id="${changelog.id}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : currentUser && changelog.author_id === currentUser.id ? `
+                                <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-changelog-id="${changelog.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <span class="text-sm text-gray-500">${changelog.status === 'draft' ? 'Draft' : 'Published'}</span>
+                            ` : `
+                                <span class="text-sm text-gray-500">View only</span>
+                            `}
+                        </div>
+                    </div>
+                </li>
+            `).join('');
+            
+            // Add event delegation for button clicks
+            addChangelogEventListeners();
+        }
+        
+        function addChangelogEventListeners() {
+            const table = document.getElementById('changelogsTable');
+            
+            // Edit button clicks
+            table.addEventListener('click', (e) => {
+                if (e.target.closest('.edit-btn')) {
+                    const btn = e.target.closest('.edit-btn');
+                    const changelogId = parseInt(btn.dataset.changelogId);
+                    editChangelog(changelogId);
+                }
+            });
+            
+            // Publish button clicks
+            table.addEventListener('click', (e) => {
+                if (e.target.closest('.publish-btn')) {
+                    const btn = e.target.closest('.publish-btn');
+                    const changelogId = parseInt(btn.dataset.changelogId);
+                    publishChangelog(changelogId);
+                }
+            });
+            
+            // Delete button clicks
+            table.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-btn')) {
+                    const btn = e.target.closest('.delete-btn');
+                    const changelogId = parseInt(btn.dataset.changelogId);
+                    deleteChangelog(changelogId);
+                }
+            });
+        }
+
+        // Modal functions
+        function showModal(title = 'New Changelog', changelog = null) {
+            Utils.Modal.showModal('changelogModal', title, () => {
+                document.getElementById('changelogId').value = changelog ? changelog.id : '';
+                document.getElementById('title').value = changelog ? changelog.title : '';
+                
+                // Set rich text editor content
+                const richTextEditor = document.getElementById('richTextEditor');
+                if (changelog && changelog.body) {
+                    richTextEditor.innerHTML = changelog.body;
+                } else {
+                    richTextEditor.innerHTML = '';
+                }
+                
+                document.getElementById('label').value = changelog ? changelog.label : '';
+                document.getElementById('status').value = changelog ? changelog.status : 'draft';
+                
+                // Disable status field for regular users
+                const statusField = document.getElementById('status');
+                if (!currentUser.is_admin) {
+                    statusField.disabled = true;
+                    statusField.value = 'draft';
+                } else {
+                    statusField.disabled = false;
+                }
+                
+                const publishBtn = document.getElementById('publishBtn');
+                if (currentUser.is_admin && changelog && changelog.status === 'draft') {
+                    publishBtn.classList.remove('hidden');
+                } else {
+                    publishBtn.classList.add('hidden');
+                }
+            });
+        }
+
+        function hideModal() {
+            Utils.Modal.hideModal('changelogModal');
+        }
+
+        async function saveChangelog(formData) {
+            const changelogId = document.getElementById('changelogId').value;
+            const url = changelogId ? `/admin/changelogs/${changelogId}` : '/admin/changelogs';
+            const method = changelogId ? 'PUT' : 'POST';
+
+            try {
+                const response = await Utils.Api.apiRequest(url, {
+                    method,
+                    body: formData
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to save changelog');
+
+                hideModal();
+                Utils.Toast.showSuccess(changelogId ? 'Changelog updated successfully!' : 'Changelog created successfully!');
+                loadChangelogs();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        async function publishChangelog(id) {
+            try {
+                const response = await Utils.Api.apiRequest(`/admin/changelogs/${id}/publish`, {
+                    method: 'POST'
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to publish changelog');
+
+                Utils.Toast.showSuccess('Changelog published successfully!');
+                loadChangelogs();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        async function deleteChangelog(id) {
+            if (!confirm('Are you sure you want to delete this changelog?')) {
+                return;
+            }
+
+            try {
+                const response = await Utils.Api.apiRequest(`/admin/changelogs/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to delete changelog');
+
+                Utils.Toast.showSuccess('Changelog deleted successfully!');
+                loadChangelogs();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        function editChangelog(id) {
+            const changelog = changelogs.find(c => c.id === id);
+            if (changelog) {
+                showModal('Edit Changelog', changelog);
+                setTimeout(initRichTextEditor, 100);
+            }
+        }
+
+        // Rich Text Editor functionality
+        function initRichTextEditor() {
+            const editor = document.getElementById('richTextEditor');
+            const toolbar = document.querySelector('.border-b.border-gray-300');
+            
+            // Toolbar button functionality
+            toolbar.addEventListener('click', (e) => {
+                if (e.target.closest('.rich-text-btn')) {
+                    e.preventDefault();
+                    const btn = e.target.closest('.rich-text-btn');
+                    const command = btn.dataset.command;
+                    
+                    if (command) {
+                        document.execCommand(command, false, null);
+                        updateToolbarState();
+                    }
+                }
+            });
+            
+            // Update toolbar state based on selection
+            function updateToolbarState() {
+                const buttons = toolbar.querySelectorAll('.rich-text-btn');
+                buttons.forEach(btn => {
+                    const command = btn.dataset.command;
+                    if (command) {
+                        if (document.queryCommandState(command)) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    }
+                });
+            }
+            
+            // Update toolbar on selection change
+            editor.addEventListener('mouseup', updateToolbarState);
+            editor.addEventListener('keyup', updateToolbarState);
+            
+            // Handle image upload
+            const imageUpload = document.getElementById('imageUpload');
+            imageUpload.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.style.maxWidth = '100%';
+                            img.style.height = 'auto';
+                            img.style.margin = '10px 0';
+                            
+                            // Insert at cursor position
+                            const selection = window.getSelection();
+                            if (selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                range.insertNode(img);
+                                range.collapse(false);
+                            } else {
+                                editor.appendChild(img);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                e.target.value = ''; // Clear input
+            });
+        }
+        
+        // Initialize rich text editor when modal is shown
+        // Event listeners
+        document.getElementById('loginFormElement').addEventListener('submit', (e) => {
+            e.preventDefault();
+            Utils.UI.hideError();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            login(username, password);
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+
+        document.getElementById('newChangelogBtn').addEventListener('click', () => {
+            showModal();
+            setTimeout(initRichTextEditor, 100);
+        });
+
+        document.getElementById('closeModal').addEventListener('click', hideModal);
+        document.getElementById('cancelBtn').addEventListener('click', hideModal);
+
+        document.getElementById('changelogForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            // Get rich text content and add to form data
+            const richTextContent = document.getElementById('richTextEditor').innerHTML;
+            
+            // Validate that content is not empty
+            if (!richTextContent.trim()) {
+                Utils.Toast.showError('Please enter some content for the changelog body');
+                return;
+            }
+            
+            formData.set('body', richTextContent);
+            saveChangelog(formData);
+        });
+
+        document.getElementById('publishBtn').addEventListener('click', () => {
+            const changelogId = document.getElementById('changelogId').value;
+            if (changelogId) {
+                publishChangelog(changelogId);
+                hideModal();
+            }
+        });
+
+        document.getElementById('statusFilter').addEventListener('change', () => {
+            currentPage = 1;
+            loadChangelogs();
+        });
+
+        // Change Password functionality
+        document.getElementById('changePasswordBtn').addEventListener('click', () => {
+            showChangePasswordModal();
+        });
+
+        document.getElementById('closeChangePasswordModal').addEventListener('click', hideChangePasswordModal);
+        document.getElementById('cancelChangePasswordBtn').addEventListener('click', hideChangePasswordModal);
+
+        document.getElementById('changePasswordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            changePassword();
+        });
+
+        // Image preview
+        document.getElementById('images').addEventListener('change', (e) => {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'w-full h-32 object-cover rounded';
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Comments functionality
+        let commentsCurrentPage = 1;
+        let commentsTotalPages = 1;
+        let comments = [];
+
+        // Tab switching
+        document.getElementById('changelogsTab').addEventListener('click', () => {
+            switchTab('changelogs');
+        });
+
+        document.getElementById('commentsTab').addEventListener('click', () => {
+            switchTab('comments');
+        });
+
+        function switchTab(tab) {
+            if (tab === 'changelogs') {
+                document.getElementById('changelogsTab').classList.add('border-indigo-500', 'text-indigo-600');
+                document.getElementById('changelogsTab').classList.remove('border-transparent', 'text-gray-500');
+                document.getElementById('commentsTab').classList.remove('border-indigo-500', 'text-indigo-600');
+                document.getElementById('commentsTab').classList.add('border-transparent', 'text-gray-500');
+                document.getElementById('changelogsTabContent').classList.remove('hidden');
+                document.getElementById('commentsTabContent').classList.add('hidden');
+            } else {
+                document.getElementById('commentsTab').classList.add('border-indigo-500', 'text-indigo-600');
+                document.getElementById('commentsTab').classList.remove('border-transparent', 'text-gray-500');
+                document.getElementById('changelogsTab').classList.remove('border-indigo-500', 'text-indigo-600');
+                document.getElementById('changelogsTab').classList.add('border-transparent', 'text-gray-500');
+                document.getElementById('commentsTabContent').classList.remove('hidden');
+                document.getElementById('changelogsTabContent').classList.add('hidden');
+                loadComments();
+            }
+        }
+
+        async function loadComments() {
+            try {
+                showCommentsLoading();
+                const status = document.getElementById('commentStatusFilter').value;
+                const response = await apiRequest(`/admin/comments?status=${status}&page=${commentsCurrentPage}&limit=20`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load comments');
+                }
+
+                comments = data.comments;
+                commentsTotalPages = data.pagination.pages;
+                renderComments();
+                renderCommentsPagination(data.pagination);
+            } catch (error) {
+                console.error('Error loading comments:', error);
+                Utils.Toast.showError(error.message);
+            } finally {
+                hideCommentsLoading();
+            }
+        }
+
+        function showCommentsLoading() {
+            document.getElementById('commentsLoadingState').classList.remove('hidden');
+            document.getElementById('commentsEmptyState').classList.add('hidden');
+            document.getElementById('commentsTable').classList.add('hidden');
+        }
+
+        function hideCommentsLoading() {
+            document.getElementById('commentsLoadingState').classList.add('hidden');
+        }
+
+        function renderComments() {
+            const table = document.getElementById('commentsTable');
+            const emptyState = document.getElementById('commentsEmptyState');
+
+            if (comments.length === 0) {
+                table.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            table.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            table.innerHTML = comments.map(comment => `
+                <li class="px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-3">
+                                <div class="flex-shrink-0">
+                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                        <i class="fas fa-user text-indigo-600"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center space-x-2">
+                                        <p class="text-sm font-medium text-gray-900">${comment.author_name}</p>
+                                        <span class="text-sm text-gray-500">${comment.author_email || 'No email'}</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${comment.is_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                            ${comment.is_approved ? 'Approved' : 'Pending'}
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 mt-1">${comment.content}</p>
+                                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                                        <span>Changelog: ${comment.changelog_title || 'Unknown'}</span>
+                                        <span>${formatDate(comment.created_at)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${!comment.is_approved ? `
+                                <button data-action="approve" data-comment-id="${comment.id}" 
+                                        class="text-green-600 hover:text-green-800 text-sm font-medium">
+                                    <i class="fas fa-check mr-1"></i>Approve
+                                </button>
+                            ` : ''}
+                            <button data-action="delete" data-comment-id="${comment.id}" 
+                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                <i class="fas fa-trash mr-1"></i>Delete
+                            </button>
+                        </div>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function renderCommentsPagination(pagination) {
+            const paginationDiv = document.getElementById('commentsPagination');
+            if (commentsTotalPages <= 1) {
+                paginationDiv.classList.add('hidden');
+                return;
+            }
+
+            paginationDiv.classList.remove('hidden');
+
+            // Update pagination info
+            const startItem = ((pagination.page - 1) * pagination.limit) + 1;
+            const endItem = Math.min(pagination.page * pagination.limit, pagination.total);
+            
+            document.getElementById('commentsStartItem').textContent = startItem;
+            document.getElementById('commentsEndItem').textContent = endItem;
+            document.getElementById('commentsTotalItems').textContent = pagination.total;
+
+            // Render page numbers
+            const pageNumbers = document.getElementById('commentsPageNumbers');
+            pageNumbers.innerHTML = '';
+
+            for (let i = 1; i <= commentsTotalPages; i++) {
+                const button = document.createElement('button');
+                button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    i === commentsCurrentPage 
+                        ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' 
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                }`;
+                button.textContent = i;
+                button.onclick = () => {
+                    commentsCurrentPage = i;
+                    loadComments();
+                };
+                pageNumbers.appendChild(button);
+            }
+        }
+
+        async function approveComment(id) {
+            try {
+                const response = await apiRequest(`/admin/comments/${id}/approve`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to approve comment');
+                }
+
+                Utils.Toast.showSuccess('Comment approved successfully!');
+                loadComments();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        async function deleteComment(id) {
+            if (!confirm('Are you sure you want to delete this comment?')) {
+                return;
+            }
+
+            try {
+                const response = await apiRequest(`/admin/comments/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to delete comment');
+                }
+
+                Utils.Toast.showSuccess('Comment deleted successfully!');
+                loadComments();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        // Comments filter
+        document.getElementById('commentStatusFilter').addEventListener('change', () => {
+            commentsCurrentPage = 1;
+            loadComments();
+        });
+
+        // Event delegation for comment actions
+        document.getElementById('commentsTable').addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+
+            const action = button.dataset.action;
+            const commentId = parseInt(button.dataset.commentId);
+
+            if (action === 'approve') {
+                approveComment(commentId);
+            } else if (action === 'delete') {
+                deleteComment(commentId);
+            }
+        });
+
+        // Team Members functionality
+        let teamCurrentPage = 1;
+        let teamTotalPages = 1;
+        let teamMembers = [];
+
+        // Team tab click handler
+        document.getElementById('teamTab').addEventListener('click', () => {
+            switchTab('team');
+        });
+
+        // Update switchTab function to include team tab and role-based access
+        function switchTab(tab) {
+            // Check if user has access to this tab
+            if (!currentUser.is_admin && (tab === 'comments' || tab === 'team')) {
+                Utils.Toast.showError('Admin access required for this feature');
+                return;
+            }
+
+            // Reset all tabs
+            const tabs = ['changelogs', 'comments', 'team'];
+            tabs.forEach(t => {
+                const tabElement = document.getElementById(`${t}Tab`);
+                const contentElement = document.getElementById(`${t}TabContent`);
+                
+                tabElement.classList.remove('border-indigo-500', 'text-indigo-600');
+                tabElement.classList.add('border-transparent', 'text-gray-500');
+                contentElement.classList.add('hidden');
+            });
+
+            // Activate selected tab
+            const selectedTab = document.getElementById(`${tab}Tab`);
+            const selectedContent = document.getElementById(`${tab}TabContent`);
+            
+            selectedTab.classList.add('border-indigo-500', 'text-indigo-600');
+            selectedTab.classList.remove('border-transparent', 'text-gray-500');
+            selectedContent.classList.remove('hidden');
+
+            // Load content based on tab
+            if (tab === 'comments') {
+                loadComments();
+            } else if (tab === 'team') {
+                loadTeamMembers();
+            }
+        }
+
+        async function loadTeamMembers() {
+            try {
+                showTeamLoading();
+                const role = document.getElementById('teamRoleFilter').value;
+                const response = await apiRequest(`/admin/users?role=${role}&page=${teamCurrentPage}&limit=10`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load team members');
+                }
+
+                teamMembers = data.users;
+                teamTotalPages = data.pagination.pages;
+                renderTeamMembers();
+                renderTeamPagination(data.pagination);
+            } catch (error) {
+                console.error('Error loading team members:', error);
+                Utils.Toast.showError(error.message);
+            } finally {
+                hideTeamLoading();
+            }
+        }
+
+        function showTeamLoading() {
+            document.getElementById('teamLoadingState').classList.remove('hidden');
+            document.getElementById('teamEmptyState').classList.add('hidden');
+            document.getElementById('teamMembersTable').classList.add('hidden');
+        }
+
+        function hideTeamLoading() {
+            document.getElementById('teamLoadingState').classList.add('hidden');
+        }
+
+        function renderTeamMembers() {
+            const table = document.getElementById('teamMembersTable');
+            const emptyState = document.getElementById('teamEmptyState');
+
+            if (teamMembers.length === 0) {
+                table.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            table.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            table.innerHTML = teamMembers.map(member => `
+                <li class="px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-3">
+                                <div class="flex-shrink-0">
+                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                        <i class="fas fa-user text-indigo-600"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center space-x-2">
+                                        <p class="text-sm font-medium text-gray-900">${member.username}</p>
+                                        <span class="text-sm text-gray-500">${member.email}</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.is_admin ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+                                            ${member.is_admin ? 'Admin' : 'User'}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                                        <span>Joined: ${formatDate(member.created_at)}</span>
+                                        ${member.id === currentUser.id ? '<span class="text-indigo-600">(You)</span>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${member.id !== currentUser.id ? `
+                                <button data-action="edit" data-member-id="${member.id}" 
+                                        class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                    <i class="fas fa-edit mr-1"></i>Edit
+                                </button>
+                                <button data-action="delete" data-member-id="${member.id}" 
+                                        class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function renderTeamPagination(pagination) {
+            const paginationDiv = document.getElementById('teamPagination');
+            if (teamTotalPages <= 1) {
+                paginationDiv.classList.add('hidden');
+                return;
+            }
+
+            paginationDiv.classList.remove('hidden');
+
+            // Update pagination info
+            const startItem = ((pagination.page - 1) * pagination.limit) + 1;
+            const endItem = Math.min(pagination.page * pagination.limit, pagination.total);
+            
+            document.getElementById('teamStartItem').textContent = startItem;
+            document.getElementById('teamEndItem').textContent = endItem;
+            document.getElementById('teamTotalItems').textContent = pagination.total;
+
+            // Render page numbers
+            const pageNumbers = document.getElementById('teamPageNumbers');
+            pageNumbers.innerHTML = '';
+
+            for (let i = 1; i <= teamTotalPages; i++) {
+                const button = document.createElement('button');
+                button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    i === teamCurrentPage 
+                        ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' 
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                }`;
+                button.textContent = i;
+                button.onclick = () => {
+                    teamCurrentPage = i;
+                    loadTeamMembers();
+                };
+                pageNumbers.appendChild(button);
+            }
+        }
+
+        // Team member modal functions
+        function showTeamMemberModal(member = null) {
+            const modal = document.getElementById('teamMemberModal');
+            const title = document.getElementById('teamModalTitle');
+            const form = document.getElementById('teamMemberForm');
+            const idField = document.getElementById('teamMemberId');
+            const passwordField = document.getElementById('teamPassword');
+
+            if (member) {
+                title.textContent = 'Edit Team Member';
+                idField.value = member.id;
+                document.getElementById('teamUsername').value = member.username;
+                document.getElementById('teamEmail').value = member.email;
+                document.getElementById('teamRole').value = member.is_admin ? 'admin' : 'user';
+                passwordField.required = false;
+                passwordField.placeholder = 'Leave blank to keep current password';
+            } else {
+                title.textContent = 'Add Team Member';
+                form.reset();
+                idField.value = '';
+                passwordField.required = true;
+                passwordField.placeholder = 'Enter password';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function hideTeamMemberModal() {
+            document.getElementById('teamMemberModal').classList.add('hidden');
+            document.getElementById('teamMemberForm').reset();
+            document.getElementById('teamMemberError').classList.add('hidden');
+        }
+
+        async function saveTeamMember(formData) {
+            try {
+                const memberId = document.getElementById('teamMemberId').value;
+                const url = memberId ? `/admin/users/${memberId}` : '/admin/users';
+                const method = memberId ? 'PUT' : 'POST';
+
+                const response = await apiRequest(url, {
+                    method: method,
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to save team member');
+                }
+
+                Utils.Toast.showSuccess(`Team member ${memberId ? 'updated' : 'added'} successfully!`);
+                hideTeamMemberModal();
+                loadTeamMembers();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        async function deleteTeamMember(id) {
+            if (!confirm('Are you sure you want to delete this team member?')) {
+                return;
+            }
+
+            try {
+                const response = await apiRequest(`/admin/users/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to delete team member');
+                }
+
+                Utils.Toast.showSuccess('Team member deleted successfully!');
+                loadTeamMembers();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        // Team member event listeners
+        document.getElementById('newTeamMemberBtn').addEventListener('click', () => {
+            showTeamMemberModal();
+        });
+
+        document.getElementById('closeTeamModal').addEventListener('click', hideTeamMemberModal);
+        document.getElementById('cancelTeamBtn').addEventListener('click', hideTeamMemberModal);
+
+        document.getElementById('teamMemberForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('teamUsername').value,
+                email: document.getElementById('teamEmail').value,
+                password: document.getElementById('teamPassword').value,
+                role: document.getElementById('teamRole').value
+            };
+
+            // Remove password if empty (for editing)
+            if (!formData.password) {
+                delete formData.password;
+            }
+
+            await saveTeamMember(formData);
+        });
+
+        // Team filter
+        document.getElementById('teamRoleFilter').addEventListener('change', () => {
+            teamCurrentPage = 1;
+            loadTeamMembers();
+        });
+
+        // Event delegation for team member actions
+        document.getElementById('teamMembersTable').addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+
+            const action = button.dataset.action;
+            const memberId = parseInt(button.dataset.memberId);
+
+            if (action === 'edit') {
+                const member = teamMembers.find(m => m.id === memberId);
+                if (member) {
+                    showTeamMemberModal(member);
+                }
+            } else if (action === 'delete') {
+                deleteTeamMember(memberId);
+            }
+        });
+
+        // Authentication state management
+        function showLoading() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+        }
+
+        function showLogin() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.remove('hidden');
+            
+            // Show role-based content
+            if (currentUser && currentUser.is_admin) {
+                document.getElementById('currentUser').textContent = `Welcome, ${currentUser.username} (Admin)`;
+                // Show all admin-only elements
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+            } else if (currentUser) {
+                document.getElementById('currentUser').textContent = `Welcome, ${currentUser.username} (User)`;
+                // Hide admin-only elements
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+            }
+        }
+
+        // Check authentication on page load
+        window.addEventListener('load', async () => {
+            console.log('Page loaded, checking authentication...');
+            showLoading();
+            
+            const token = localStorage.getItem('token');
+            console.log('Token found:', !!token);
+            if (!token) {
+                console.log('No token, showing login');
+                showLogin();
+                return;
+            }
+
+            try {
+                console.log('Making auth check request...');
+                const response = await apiRequest('/auth/me');
+                console.log('Auth response:', response);
+                const data = await response.json();
+                console.log('Auth data:', data);
+                
+                if (data.user) {
+                    console.log('User authenticated:', data.user);
+                    currentUser = data.user;
+                    showDashboard();
+                    loadChangelogs();
+                } else {
+                    console.log('No user in response, showing login');
+                    localStorage.removeItem('token');
+                    showLogin();
+                }
+            } catch (error) {
+                console.error('Authentication check failed:', error);
+                localStorage.removeItem('token');
+                showLogin();
+            }
+        });
+    </script>
+</body>
+</html> 

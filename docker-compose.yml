@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: release_log_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-release_log_db}
+      MYSQL_USER: ${DB_USER:-release_log_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-your_password_here}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - release_log_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Node.js Application
+  app:
+    build: .
+    container_name: release_log_app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=${DB_USER:-release_log_user}
+      - DB_PASSWORD=${DB_PASSWORD:-your_password_here}
+      - DB_NAME=${DB_NAME:-release_log_db}
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-your_super_secret_jwt_key_here_change_this_in_production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
+      - BASE_URL=${BASE_URL:-https://localhost:3000}
+      - DOMAIN=${DOMAIN:-localhost}
+      - PROTOCOL=${PROTOCOL:-https}
+      - UPLOAD_PATH=uploads
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-5242880}
+      - ALLOWED_IMAGE_TYPES=${ALLOWED_IMAGE_TYPES:-jpg,jpeg,png,gif,webp}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-1000}
+      - HONEYPOT_FIELD_NAME=${HONEYPOT_FIELD_NAME:-_gotcha}
+      - MAX_COMMENTS_PER_IP=${MAX_COMMENTS_PER_IP:-10}
+      - MAX_VOTES_PER_IP=${MAX_VOTES_PER_IP:-50}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - release_log_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: release_log_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - release_log_network
+    profiles:
+      - production
+
+volumes:
+  mysql_data:
+  # redis_data:
+
+networks:
+  release_log_network:
+    driver: bridge 

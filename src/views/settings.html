@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="/js/utils.js"></script>
+    <style>
+        .theme-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .theme-preview:hover {
+            transform: scale(1.1);
+        }
+        .theme-preview.active {
+            border-color: #000;
+            transform: scale(1.1);
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background-color: #4F46E5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #4338CA;
+        }
+        .btn-primary:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4F46E5, 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+        
+        .btn-secondary {
+            background-color: #E5E7EB;
+            color: #374151;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #D1D5DB;
+        }
+        .btn-secondary:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #6B7280, 0 0 0 4px rgba(107, 114, 128, 0.1);
+        }
+        
+        /* Tab styles */
+        .tab-button.active {
+            background-color: #E0E7FF;
+            color: #4338CA;
+        }
+        
+        .tab-button:not(.active) {
+            color: #6B7280;
+        }
+        .tab-button:not(.active):hover {
+            color: #374151;
+            background-color: #F3F4F6;
+        }
+        
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(75, 85, 99, 0.5);
+            overflow-y: auto;
+            height: 100%;
+            width: 100%;
+            z-index: 50;
+        }
+        
+        .modal-content {
+            position: relative;
+            top: 5rem;
+            margin: 0 auto;
+            padding: 1.25rem;
+            border: 1px solid #E5E7EB;
+            width: 91.666667%;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-radius: 0.375rem;
+            background-color: white;
+        }
+        
+        @media (min-width: 768px) {
+            .modal-content {
+                width: 50%;
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .modal-body {
+            margin-bottom: 1rem;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding-top: 1rem;
+        }
+        
+        .modal-close {
+            color: #9CA3AF;
+        }
+        .modal-close:hover {
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">Settings</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/admin" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Admin
+                    </a>
+                    <button id="logout-btn" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Settings Tabs -->
+        <div class="mb-8">
+            <nav class="flex space-x-8" aria-label="Tabs">
+                <button id="tab-company" class="tab-button active px-3 py-2 font-medium text-sm rounded-md" data-tab="company">
+                    <i class="fas fa-building mr-2"></i>Company
+                </button>
+                <button id="tab-appearance" class="tab-button px-3 py-2 font-medium text-sm rounded-md" data-tab="appearance">
+                    <i class="fas fa-palette mr-2"></i>Appearance
+                </button>
+                <button id="tab-smtp" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="smtp">
+                    <i class="fas fa-envelope mr-2"></i>SMTP
+                </button>
+                <button id="tab-s3" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="s3">
+                    <i class="fas fa-cloud mr-2"></i>S3 Storage
+                </button>
+                <button id="tab-notifications" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="notifications">
+                    <i class="fas fa-bell mr-2"></i>Notifications
+                </button>
+            </nav>
+        </div>
+
+        <!-- Company Settings Tab -->
+        <div id="company-tab" class="tab-content">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-6">Company Settings</h2>
+                
+                <form id="company-form" class="space-y-6">
+                    <div id="company-name-field">
+                        <label for="company-name" class="block text-sm font-medium text-gray-700">Company Name</label>
+                        <input type="text" id="company-name" name="company_name" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <p class="mt-1 text-sm text-gray-500">This will be displayed in place of "Release Log"</p>
+                    </div>
+
+                    <div>
+                        <label for="logo-url" class="block text-sm font-medium text-gray-700">Logo URL</label>
+                        <div class="mt-1 flex items-center space-x-4">
+                            <input type="url" id="logo-url" name="logo_url"
+                                   class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <button type="button" id="upload-logo-btn" 
+                                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                <i class="fas fa-upload mr-2"></i>Upload
+                            </button>
+                        </div>
+                        <div id="logo-preview" class="mt-2 hidden">
+                            <img id="logo-image" src="" alt="Logo preview" class="h-12 w-auto">
+                        </div>
+                        <p class="mt-1 text-sm text-gray-500">If a logo is provided, the company name will be hidden</p>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Save Company Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Appearance Settings Tab -->
+        <div id="appearance-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-6">Appearance Settings</h2>
+                
+                <form id="appearance-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Theme Color</label>
+                        <div id="theme-options" class="grid grid-cols-5 gap-4">
+                            <!-- Theme options will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="timezone" class="block text-sm font-medium text-gray-700">Timezone</label>
+                        <select id="timezone" name="timezone" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <!-- Timezone options will be populated by JavaScript -->
+                        </select>
+                        <p class="mt-1 text-sm text-gray-500">All dates and times will be displayed in this timezone</p>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Save Appearance Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SMTP Settings Tab -->
+        <div id="smtp-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-6">SMTP Settings</h2>
+                <p class="text-sm text-gray-600 mb-6">Configure SMTP for email notifications. For AWS SES, use your SES SMTP credentials (not your AWS access keys).</p>
+                
+                <form id="smtp-form" class="space-y-6">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="smtp-enabled" name="enabled" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="smtp-enabled" class="ml-2 block text-sm text-gray-900">Enable SMTP for email notifications</label>
+                    </div>
+
+                    <div id="smtp-fields" class="space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="smtp-host" class="block text-sm font-medium text-gray-700">SMTP Host</label>
+                                <input type="text" id="smtp-host" name="host" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                       placeholder="email-smtp.us-east-1.amazonaws.com">
+                                <p class="mt-1 text-sm text-gray-500">For AWS SES: email-smtp.{region}.amazonaws.com</p>
+                            </div>
+                            <div>
+                                <label for="smtp-port" class="block text-sm font-medium text-gray-700">SMTP Port</label>
+                                <input type="number" id="smtp-port" name="port" value="587" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <p class="mt-1 text-sm text-gray-500">587 (STARTTLS) or 465 (SSL) for AWS SES</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="smtp-user" class="block text-sm font-medium text-gray-700">SMTP Username</label>
+                                <input type="text" id="smtp-user" name="user" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                       placeholder="AKIAIOSFODNN7EXAMPLE">
+                                <p class="mt-1 text-sm text-gray-500">For AWS SES, use your SES SMTP username (not your AWS access key)</p>
+                            </div>
+                            <div>
+                                <label for="smtp-pass" class="block text-sm font-medium text-gray-700">SMTP Password</label>
+                                <input type="password" id="smtp-pass" name="pass" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <p class="mt-1 text-sm text-gray-500">For AWS SES, use your SES SMTP password (not your AWS secret key)</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center">
+                            <input type="checkbox" id="smtp-secure" name="secure" checked
+                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="smtp-secure" class="ml-2 block text-sm text-gray-900">Use secure connection (SSL/TLS)</label>
+                        </div>
+                        <p class="text-sm text-gray-500">For AWS SES: Uncheck for port 587 (STARTTLS), check for port 465 (SSL)</p>
+
+                        <div class="flex space-x-4">
+                            <button type="button" id="test-smtp-btn" class="btn-secondary">
+                                <i class="fas fa-paper-plane mr-2"></i>Test SMTP
+                            </button>
+                            <div id="smtp-status" class="flex items-center text-sm">
+                                <!-- Status will be shown here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Save SMTP Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- S3 Settings Tab -->
+        <div id="s3-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-6">S3 Storage Settings</h2>
+                
+                <form id="s3-form" class="space-y-6">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="s3-enabled" name="enabled" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="s3-enabled" class="ml-2 block text-sm text-gray-900">Enable S3 storage for images</label>
+                    </div>
+
+                    <div id="s3-fields" class="space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="s3-bucket" class="block text-sm font-medium text-gray-700">S3 Bucket Name</label>
+                                <input type="text" id="s3-bucket" name="bucket" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="s3-region" class="block text-sm font-medium text-gray-700">S3 Region</label>
+                                <select id="s3-region" name="region" required
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="us-east-1">US East (N. Virginia)</option>
+                                    <option value="us-west-2">US West (Oregon)</option>
+                                    <option value="eu-west-1">Europe (Ireland)</option>
+                                    <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="s3-access-key" class="block text-sm font-medium text-gray-700">Access Key ID</label>
+                                <input type="text" id="s3-access-key" name="access_key" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="s3-secret-key" class="block text-sm font-medium text-gray-700">Secret Access Key</label>
+                                <input type="password" id="s3-secret-key" name="secret_key" required
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="s3-cloudfront-url" class="block text-sm font-medium text-gray-700">CloudFront URL (Optional)</label>
+                            <input type="url" id="s3-cloudfront-url" name="cloudfront_url"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <p class="mt-1 text-sm text-gray-500">If you have CloudFront configured, enter the distribution URL</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Save S3 Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Notifications Settings Tab -->
+        <div id="notifications-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-6">Notification Settings</h2>
+                
+                <form id="notifications-form" class="space-y-6">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="comment-notifications" name="comment_notifications" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="comment-notifications" class="ml-2 block text-sm text-gray-900">Send email notifications for new comments</label>
+                    </div>
+                    <p class="text-sm text-gray-500">When enabled, admins will receive email notifications whenever someone submits a comment</p>
+
+                    <div id="notification-fields" class="space-y-4 hidden">
+                        <div>
+                            <label for="admin-email" class="block text-sm font-medium text-gray-700">Admin Email Address</label>
+                            <input type="email" id="admin-email" name="admin_email" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="admin@example.com">
+                            <p class="mt-1 text-sm text-gray-500">Email address where comment notifications will be sent</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Save Notification Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test SMTP Modal -->
+    <div id="test-smtp-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-lg font-medium text-gray-900">Test SMTP Connection</h3>
+                <button id="close-modal-btn" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <label for="test-email" class="block text-sm font-medium text-gray-700">Test Email Address</label>
+                    <input type="email" id="test-email" required
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                           placeholder="Enter email address to send test email">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-modal-btn" class="btn-secondary">Cancel</button>
+                <button id="send-test-email-btn" class="btn-primary">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Test Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSettings = {};
+        let themes = [];
+        let timezones = [];
+
+        // Initialize settings page
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadSettings();
+            setupEventListeners();
+            
+            // Check user role and show/hide admin-only elements
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const isAdmin = payload.is_admin;
+                    
+                    if (!isAdmin) {
+                        // Hide admin-only elements
+                        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+                        
+                        // If user is on an admin-only tab, switch to company tab
+                        const activeTab = document.querySelector('.tab-button.active');
+                        if (activeTab && activeTab.classList.contains('admin-only')) {
+                            showTab('company');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error parsing token:', error);
+                }
+            }
+            
+            // Add event listeners for removed inline handlers
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('upload-logo-btn').addEventListener('click', uploadLogo);
+            document.getElementById('test-smtp-btn').addEventListener('click', testSMTP);
+            document.getElementById('close-modal-btn').addEventListener('click', function() { closeModal('test-smtp-modal'); });
+            document.getElementById('cancel-modal-btn').addEventListener('click', function() { closeModal('test-smtp-modal'); });
+            document.getElementById('send-test-email-btn').addEventListener('click', sendTestEmail);
+            // Tab switching
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    showTab(this.dataset.tab);
+                });
+            });
+            // Theme selection (event delegation)
+            document.getElementById('theme-options').addEventListener('click', function(e) {
+                if (e.target.classList.contains('theme-preview')) {
+                    const themeValue = themes.find(t => t.color === e.target.style.backgroundColor)?.value;
+                    if (themeValue) selectTheme(themeValue);
+                }
+            });
+        });
+
+        async function loadSettings() {
+            try {
+                showLoading();
+                const response = await fetch('/api/settings', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load settings');
+                }
+
+                const data = await response.json();
+                currentSettings = data.config;
+                themes = data.themes;
+                timezones = data.timezones;
+
+                populateSettings();
+                updateSMTPStatus(data.emailStatus);
+                hideLoading();
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showToast('Error loading settings', 'error');
+                hideLoading();
+            }
+        }
+
+        // API request helper
+        async function apiRequest(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            };
+
+            const finalOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...options.headers
+                }
+            };
+
+            const response = await fetch(url, finalOptions);
+            return response;
+        }
+
+        function populateSettings() {
+            // Company settings
+            document.getElementById('company-name').value = currentSettings.company?.name || '';
+            document.getElementById('logo-url').value = currentSettings.company?.logo || '';
+            updateLogoPreview();
+            
+            // Ensure company name field is shown/hidden based on logo URL
+            const logoUrl = currentSettings.company?.logo || '';
+            const companyNameField = document.getElementById('company-name-field');
+            const companyNameInput = document.getElementById('company-name');
+            
+            if (logoUrl) {
+                companyNameField.classList.add('hidden');
+                companyNameInput.removeAttribute('required');
+            } else {
+                companyNameField.classList.remove('hidden');
+                companyNameInput.setAttribute('required', 'required');
+            }
+
+            // Appearance settings
+            populateThemes();
+            populateTimezones();
+            document.getElementById('timezone').value = currentSettings.appearance?.timezone || 'UTC';
+
+            // SMTP settings
+            const smtpEnabled = document.getElementById('smtp-enabled');
+            smtpEnabled.checked = currentSettings.smtp?.enabled || false;
+            toggleSMTPFields();
+
+            document.getElementById('smtp-host').value = currentSettings.smtp?.host || '';
+            document.getElementById('smtp-port').value = currentSettings.smtp?.port || 587;
+            document.getElementById('smtp-user').value = currentSettings.smtp?.user || '';
+            document.getElementById('smtp-pass').value = currentSettings.smtp?.pass || '';
+            document.getElementById('smtp-secure').checked = currentSettings.smtp?.secure !== false;
+
+            // S3 settings
+            const s3Enabled = document.getElementById('s3-enabled');
+            s3Enabled.checked = currentSettings.s3?.enabled || false;
+            toggleS3Fields();
+
+            document.getElementById('s3-bucket').value = currentSettings.s3?.bucket || '';
+            document.getElementById('s3-region').value = currentSettings.s3?.region || 'us-east-1';
+            document.getElementById('s3-access-key').value = currentSettings.s3?.accessKey || '';
+            document.getElementById('s3-secret-key').value = currentSettings.s3?.secretKey || '';
+            document.getElementById('s3-cloudfront-url').value = currentSettings.s3?.cloudfrontUrl || '';
+
+            // Notification settings
+            document.getElementById('comment-notifications').checked = currentSettings.notifications?.comments !== false;
+            document.getElementById('admin-email').value = currentSettings.notifications?.adminEmail || '';
+            toggleNotificationFields();
+        }
+
+        function populateThemes() {
+            const container = document.getElementById('theme-options');
+            container.innerHTML = '';
+
+            themes.forEach(theme => {
+                const div = document.createElement('div');
+                div.className = 'text-center';
+                
+                const preview = document.createElement('div');
+                preview.className = 'theme-preview mx-auto mb-2';
+                preview.style.backgroundColor = theme.color;
+                
+                const label = document.createElement('div');
+                label.className = 'text-sm text-gray-700';
+                label.textContent = theme.name;
+                
+                div.appendChild(preview);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+
+            // Select current theme
+            selectTheme(currentSettings.appearance?.theme || 'indigo');
+        }
+
+        function populateTimezones() {
+            const select = document.getElementById('timezone');
+            select.innerHTML = '';
+
+            timezones.forEach(tz => {
+                const option = document.createElement('option');
+                option.value = tz.value;
+                option.textContent = tz.name;
+                select.appendChild(option);
+            });
+        }
+
+        function selectTheme(themeValue) {
+            // Remove active class from all previews
+            document.querySelectorAll('.theme-preview').forEach(preview => {
+                preview.classList.remove('active');
+            });
+
+            // Add active class to selected theme
+            const selectedPreview = document.querySelector(`[onclick="selectTheme('${themeValue}')"]`);
+            if (selectedPreview) {
+                selectedPreview.classList.add('active');
+            }
+
+            // Store selected theme
+            currentSettings.appearance = currentSettings.appearance || {};
+            currentSettings.appearance.theme = themeValue;
+        }
+
+        function updateLogoPreview() {
+            const logoUrl = document.getElementById('logo-url').value;
+            const preview = document.getElementById('logo-preview');
+            const image = document.getElementById('logo-image');
+            const companyNameField = document.getElementById('company-name-field');
+            const companyNameInput = document.getElementById('company-name');
+
+            if (logoUrl) {
+                image.src = logoUrl;
+                preview.classList.remove('hidden');
+                // Hide company name field when logo is provided
+                companyNameField.classList.add('hidden');
+                // Remove required attribute and clear value
+                companyNameInput.removeAttribute('required');
+                companyNameInput.value = '';
+            } else {
+                preview.classList.add('hidden');
+                // Show company name field when no logo is provided
+                companyNameField.classList.remove('hidden');
+                // Add required attribute back
+                companyNameInput.setAttribute('required', 'required');
+            }
+        }
+
+        function toggleSMTPFields() {
+            const enabled = document.getElementById('smtp-enabled').checked;
+            const fields = document.getElementById('smtp-fields');
+            
+            if (enabled) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
+        function toggleS3Fields() {
+            const enabled = document.getElementById('s3-enabled').checked;
+            const fields = document.getElementById('s3-fields');
+            
+            if (enabled) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
+        function toggleNotificationFields() {
+            const enabled = document.getElementById('comment-notifications').checked;
+            const fields = document.getElementById('notification-fields');
+            
+            if (enabled) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
+        function updateSMTPStatus(status) {
+            const statusDiv = document.getElementById('smtp-status');
+            if (status.configured) {
+                statusDiv.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2"></i>SMTP configured and ready';
+            } else {
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-circle text-yellow-500 mr-2"></i>SMTP not configured';
+            }
+        }
+
+        function setupEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    showTab(this.dataset.tab);
+                });
+            });
+
+            // Form submissions
+            document.getElementById('company-form').addEventListener('submit', saveCompanySettings);
+            document.getElementById('appearance-form').addEventListener('submit', saveAppearanceSettings);
+            document.getElementById('smtp-form').addEventListener('submit', saveSMTPSettings);
+            document.getElementById('s3-form').addEventListener('submit', saveS3Settings);
+            document.getElementById('notifications-form').addEventListener('submit', saveNotificationSettings);
+
+            // Toggle fields
+            document.getElementById('smtp-enabled').addEventListener('change', toggleSMTPFields);
+            document.getElementById('s3-enabled').addEventListener('change', toggleS3Fields);
+            document.getElementById('comment-notifications').addEventListener('change', toggleNotificationFields);
+
+            // Logo URL change
+            document.getElementById('logo-url').addEventListener('input', updateLogoPreview);
+        }
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active', 'bg-indigo-100', 'text-indigo-700');
+                button.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+
+            // Add active class to selected button
+            const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+            activeButton.classList.add('active', 'bg-indigo-100', 'text-indigo-700');
+            activeButton.classList.remove('text-gray-500', 'hover:text-gray-700');
+        }
+
+        async function saveCompanySettings(e) {
+            e.preventDefault();
+            
+            try {
+                showLoading();
+                const formData = new FormData(e.target);
+                const logoUrl = formData.get('logo_url');
+                const companyName = formData.get('company_name');
+                
+                // If logo URL is provided, company name is not required
+                if (logoUrl && !companyName) {
+                    // This is valid - logo will be used instead of company name
+                } else if (!logoUrl && !companyName) {
+                    showToast('Please provide either a company name or a logo URL', 'error');
+                    return;
+                }
+                
+                const data = {
+                    company_name: companyName,
+                    logo_url: logoUrl
+                };
+
+                const response = await fetch('/api/settings/company', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save company settings');
+                }
+
+                showToast('Company settings saved successfully', 'success');
+                await loadSettings();
+            } catch (error) {
+                console.error('Error saving company settings:', error);
+                showToast('Error saving company settings', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveAppearanceSettings(e) {
+            e.preventDefault();
+            
+            try {
+                showLoading();
+                const formData = new FormData(e.target);
+                const data = {
+                    theme: currentSettings.appearance?.theme || 'indigo',
+                    timezone: formData.get('timezone')
+                };
+
+                const response = await fetch('/api/settings/appearance', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save appearance settings');
+                }
+
+                showToast('Appearance settings saved successfully', 'success');
+                await loadSettings();
+            } catch (error) {
+                console.error('Error saving appearance settings:', error);
+                showToast('Error saving appearance settings', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveSMTPSettings(e) {
+            e.preventDefault();
+            
+            try {
+                showLoading();
+                const formData = new FormData(e.target);
+                const data = {
+                    enabled: formData.get('enabled') === 'on',
+                    host: formData.get('host'),
+                    port: parseInt(formData.get('port')),
+                    user: formData.get('user'),
+                    pass: formData.get('pass'),
+                    secure: formData.get('secure') === 'on'
+                };
+
+                const response = await fetch('/api/settings/smtp', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save SMTP settings');
+                }
+
+                const result = await response.json();
+                showToast('SMTP settings saved successfully', 'success');
+                updateSMTPStatus(result.emailStatus);
+                await loadSettings();
+            } catch (error) {
+                console.error('Error saving SMTP settings:', error);
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveS3Settings(e) {
+            e.preventDefault();
+            
+            try {
+                showLoading();
+                const formData = new FormData(e.target);
+                const data = {
+                    enabled: formData.get('enabled') === 'on',
+                    bucket: formData.get('bucket'),
+                    region: formData.get('region'),
+                    access_key: formData.get('access_key'),
+                    secret_key: formData.get('secret_key'),
+                    cloudfront_url: formData.get('cloudfront_url')
+                };
+
+                const response = await fetch('/api/settings/s3', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save S3 settings');
+                }
+
+                showToast('S3 settings saved successfully', 'success');
+                await loadSettings();
+            } catch (error) {
+                console.error('Error saving S3 settings:', error);
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveNotificationSettings(e) {
+            e.preventDefault();
+            
+            try {
+                showLoading();
+                const formData = new FormData(e.target);
+                const commentNotifications = formData.get('comment_notifications') === 'on';
+                const adminEmail = formData.get('admin_email');
+                
+                // Validate admin email if notifications are enabled
+                if (commentNotifications && (!adminEmail || adminEmail.trim() === '')) {
+                    showToast('Admin email is required when comment notifications are enabled', 'error');
+                    return;
+                }
+                
+                const data = {
+                    comment_notifications: commentNotifications,
+                    admin_email: adminEmail
+                };
+
+                const response = await fetch('/api/settings/notifications', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save notification settings');
+                }
+
+                showToast('Notification settings saved successfully', 'success');
+                await loadSettings();
+            } catch (error) {
+                console.error('Error saving notification settings:', error);
+                showToast('Error saving notification settings', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function uploadLogo() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            
+            input.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    showLoading();
+                    const formData = new FormData();
+                    formData.append('logo', file);
+
+                    const response = await fetch('/api/settings/logo', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to upload logo');
+                    }
+
+                    const result = await response.json();
+                    document.getElementById('logo-url').value = result.logo_url;
+                    updateLogoPreview();
+                    showToast('Logo uploaded successfully', 'success');
+                } catch (error) {
+                    console.error('Error uploading logo:', error);
+                    showToast('Error uploading logo', 'error');
+                } finally {
+                    hideLoading();
+                }
+            };
+
+            input.click();
+        }
+
+        function testSMTP() {
+            showModal('test-smtp-modal');
+        }
+
+        async function sendTestEmail() {
+            const testEmail = document.getElementById('test-email').value;
+            if (!testEmail) {
+                showToast('Please enter a test email address', 'error');
+                return;
+            }
+
+            try {
+                showLoading();
+                const response = await fetch('/api/settings/test-smtp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ test_email: testEmail })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to send test email');
+                }
+
+                closeModal('test-smtp-modal');
+                showToast('Test email sent successfully', 'success');
+            } catch (error) {
+                console.error('Error sending test email:', error);
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/admin';
+        }
+
+        // Utility functions
+        function showLoading() {
+            // Add loading indicator if needed
+        }
+
+        function hideLoading() {
+            // Remove loading indicator if needed
+        }
+
+        function showToast(message, type = 'info') {
+            if (typeof Utils !== 'undefined' && Utils.Toast) {
+                if (type === 'success') {
+                    Utils.Toast.showSuccess(message);
+                } else if (type === 'error') {
+                    Utils.Toast.showError(message);
+                } else {
+                    Utils.Toast.showInfo(message);
+                }
+            } else {
+                alert(message);
+            }
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+    </script>
+</body>
+</html> 
