@@ -1,12 +1,11 @@
--- Release Log Database Schema
--- This file contains the complete database structure for the Release Log application
+-- Release Log — reference schema (utf8mb4).
+-- New installs: prefer starting the app once (`npm start`) so `initializeDatabase()` + `migrateSchema()` run,
+-- or run `npm run migrate` after the database exists.
 
--- Create database if not exists
 CREATE DATABASE IF NOT EXISTS release_log CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE release_log;
 
--- Users table
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -17,22 +16,37 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Changelogs table
+CREATE TABLE IF NOT EXISTS projects (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    public_key VARCHAR(32) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_projects_public_key (public_key),
+    KEY idx_projects_user (user_id),
+    CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS changelogs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     body TEXT NOT NULL,
-    label ENUM('feature', 'bug', 'optimization') NOT NULL,
+    label VARCHAR(64) NOT NULL DEFAULT 'feature',
     status ENUM('draft', 'published') DEFAULT 'draft',
     author_id INT NOT NULL,
+    project_id INT NOT NULL,
     published_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     slug VARCHAR(255) UNIQUE,
-    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+    view_count INT NOT NULL DEFAULT 0,
+    upvote_count INT NOT NULL DEFAULT 0,
+    downvote_count INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
--- Images table
 CREATE TABLE IF NOT EXISTS images (
     id INT AUTO_INCREMENT PRIMARY KEY,
     changelog_id INT NOT NULL,
@@ -46,7 +60,6 @@ CREATE TABLE IF NOT EXISTS images (
     FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
 );
 
--- Votes table
 CREATE TABLE IF NOT EXISTS votes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     changelog_id INT NOT NULL,
@@ -57,7 +70,6 @@ CREATE TABLE IF NOT EXISTS votes (
     UNIQUE KEY unique_vote (changelog_id, ip_address)
 );
 
--- Comments table
 CREATE TABLE IF NOT EXISTS comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     changelog_id INT NOT NULL,
@@ -70,7 +82,27 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
 );
 
--- Settings table
+CREATE TABLE IF NOT EXISTS project_labels (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    project_id INT NOT NULL,
+    slug VARCHAR(64) NOT NULL,
+    display_name VARCHAR(128) NOT NULL,
+    color VARCHAR(32) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_project_slug (project_id, slug),
+    CONSTRAINT fk_pl_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS changelog_translations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    changelog_id INT NOT NULL,
+    locale VARCHAR(16) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    UNIQUE KEY uk_changelog_locale (changelog_id, locale),
+    CONSTRAINT fk_ct_changelog FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     setting_key VARCHAR(100) UNIQUE NOT NULL,
@@ -81,11 +113,16 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Insert default admin user
-INSERT IGNORE INTO users (username, email, password_hash, is_admin) VALUES 
+-- Default admin (password: password — replace in production; bcrypt hash below is Laravel-style placeholder)
+INSERT IGNORE INTO users (username, email, password_hash, is_admin) VALUES
 ('admin', 'admin@example.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1);
 
--- Insert default settings
+-- One default project per admin user (opaque public_key) so changelogs can reference project_id
+INSERT INTO projects (user_id, name, public_key)
+SELECT u.id, 'Default project', LOWER(CONCAT(SUBSTRING(MD5(CONCAT(u.id, 'salt')), 1, 16), SUBSTRING(MD5(CONCAT(u.email, 'pk')), 1, 8)))
+FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.user_id = u.id);
+
 INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, description) VALUES
 ('company_name', 'Release Log', 'string', 'Company/Application Name'),
 ('logo_url', '', 'string', 'Logo URL'),
@@ -104,11 +141,15 @@ INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, descripti
 ('s3_secret_key', '', 'string', 'S3 secret key'),
 ('s3_cloudfront_url', '', 'string', 'CloudFront URL (optional)'),
 ('comment_notifications', 'true', 'boolean', 'Send email notifications for new comments'),
-('admin_email', '', 'string', 'Admin email for notifications');
+('admin_email', '', 'string', 'Admin email for notifications'),
+('changelog_max_image_size_bytes', '5242880', 'number', 'Max changelog image upload size in bytes'),
+('changelog_max_images_per_entry', '10', 'number', 'Max images per changelog entry'),
+('changelog_allowed_image_types', 'jpg,jpeg,png,gif,webp', 'string', 'Comma-separated allowed image extensions'),
+('show_changelog_author_username', 'false', 'boolean', 'Show author username on public changelog');
 
--- Create indexes for better performance
 CREATE INDEX idx_changelogs_status ON changelogs(status);
 CREATE INDEX idx_changelogs_author ON changelogs(author_id);
+CREATE INDEX idx_changelogs_project ON changelogs(project_id);
 CREATE INDEX idx_changelogs_created ON changelogs(created_at);
 CREATE INDEX idx_votes_changelog ON votes(changelog_id);
 CREATE INDEX idx_votes_ip ON votes(ip_address);
@@ -117,35 +158,26 @@ CREATE INDEX idx_comments_approved ON comments(is_approved);
 CREATE INDEX idx_images_changelog ON images(changelog_id);
 CREATE INDEX idx_settings_key ON settings(setting_key);
 
--- Create views for easier querying
 CREATE OR REPLACE VIEW published_changelogs AS
-SELECT 
+SELECT
     c.*,
-    u.username as author_name,
-    (SELECT COUNT(*) FROM votes v WHERE v.changelog_id = c.id AND v.vote_type = 'upvote') as upvotes,
-    (SELECT COUNT(*) FROM votes v WHERE v.changelog_id = c.id AND v.vote_type = 'downvote') as downvotes,
-    (SELECT COUNT(*) FROM comments cm WHERE cm.changelog_id = c.id AND cm.is_approved = 1) as comments
+    u.username AS author_name,
+    COALESCE(c.upvote_count, 0) AS upvotes,
+    COALESCE(c.downvote_count, 0) AS downvotes,
+    (SELECT COUNT(*) FROM comments cm WHERE cm.changelog_id = c.id AND cm.is_approved = 1) AS comments
 FROM changelogs c
 LEFT JOIN users u ON c.author_id = u.id
 WHERE c.status = 'published'
 ORDER BY c.published_at DESC;
 
--- Create stored procedure for cleaning old data
 DELIMITER //
 CREATE PROCEDURE CleanOldData()
 BEGIN
-    -- Delete old unapproved comments (older than 30 days)
-    DELETE FROM comments 
-    WHERE is_approved = 0 
+    DELETE FROM comments
+    WHERE is_approved = 0
     AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY);
-    
-    -- Delete old votes (older than 1 year)
-    DELETE FROM votes 
+
+    DELETE FROM votes
     WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR);
 END //
 DELIMITER ;
-
--- Grant permissions (adjust as needed)
--- CREATE USER IF NOT EXISTS 'release_log_user'@'localhost' IDENTIFIED BY 'your_password';
--- GRANT ALL PRIVILEGES ON release_log.* TO 'release_log_user'@'localhost';
--- FLUSH PRIVILEGES; 

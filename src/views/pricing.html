@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — Release Log</title>
+  <meta name="description" content="Free and paid plans for Release Log. Self-host always available.">
+  <link rel="stylesheet" href="/css/marketing.css">
+</head>
+<body class="marketing">
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="/" style="font-weight:600;">Release Log</a>
+      <nav class="nav-links">
+        <a href="/documentation">Docs</a>
+        <a href="/faq">FAQ</a>
+      </nav>
+      <div class="nav-cta">
+        <a href="/login" class="btn-pill">Sign in</a>
+        <a href="/signup" class="btn-pill primary">Sign up</a>
+      </div>
+    </div>
+  </header>
+  <main class="section alt" style="padding-top:48px;">
+    <div class="section-inner">
+      <h2>Simple pricing</h2>
+      <p class="sub">Paid tier price TBD — we’re finalizing limits. Self-host is always free (MIT).</p>
+      <div class="grid-3" style="max-width:720px;margin:0 auto;">
+        <div class="card" style="text-align:center;">
+          <h3>Free</h3>
+          <p style="font-size:32px;font-weight:600;margin:16px 0;">$0</p>
+          <p>Core changelog, comments, votes, and branding.</p>
+          <a href="/signup" class="btn-pill primary" style="margin-top:20px;display:inline-block;">Get started</a>
+        </div>
+        <div class="card" style="text-align:center;">
+          <h3>Paid</h3>
+          <p id="paidPriceLabel" style="font-size:32px;font-weight:600;margin:16px 0;">TBD</p>
+          <p>Higher limits and upcoming premium features.</p>
+          <a href="/signup" class="btn-pill" style="margin-top:20px;display:inline-block;">Join waitlist</a>
+        </div>
+      </div>
+      <div style="max-width:640px;margin:64px auto 0;">
+        <h3 style="font-size:21px;font-weight:600;margin-bottom:20px;">Pricing FAQ</h3>
+        <details style="border-bottom:1px solid var(--line);padding:16px 0;">
+          <summary style="cursor:pointer;font-weight:500;">Can I self-host for free?</summary>
+          <p class="sub" style="text-align:left;margin-top:12px;margin-bottom:0;">Yes. The project is open source; you run it on your infrastructure.</p>
+        </details>
+        <details style="border-bottom:1px solid var(--line);padding:16px 0;">
+          <summary style="cursor:pointer;font-weight:500;">What happens when Paid launches?</summary>
+          <p class="sub" style="text-align:left;margin-top:12px;margin-bottom:0;">Free stays available. We’ll publish exact limits before billing starts.</p>
+        </details>
+        <details style="border-bottom:1px solid var(--line);padding:16px 0;">
+          <summary style="cursor:pointer;font-weight:500;">Do you offer refunds?</summary>
+          <p class="sub" style="text-align:left;margin-top:12px;margin-bottom:0;">We’ll publish a billing policy with the paid launch.</p>
+        </details>
+      </div>
+    </div>
+  </main>
+  <footer class="footer"><a href="/">Home</a></footer>
+  <script>
+    (async () => {
+      try {
+        const r = await fetch('/api/public/config');
+        const j = await r.json();
+        if (j.pricingPaidLabel) {
+          const el = document.getElementById('paidPriceLabel');
+          if (el) el.textContent = j.pricingPaidLabel;
+        }
+      } catch (_) {}
+    })();
+  </script>
+</body>
+</html>

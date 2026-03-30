@@ -1,6 +1,8 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+const { migrateSchema } = require('./schemaMigrate');
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -24,7 +26,6 @@ async function testConnection() {
 
 async function initializeDatabase() {
   try {
-    // Create users table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -37,23 +38,22 @@ async function initializeDatabase() {
       )
     `);
 
-    // Create changelogs table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS changelogs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         body TEXT NOT NULL,
-        label ENUM('feature', 'bug', 'optimization') NOT NULL,
+        label VARCHAR(64) NOT NULL DEFAULT 'feature',
         status ENUM('draft', 'published') DEFAULT 'draft',
         author_id INT NOT NULL,
         published_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        slug VARCHAR(255) UNIQUE,
         FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
-    // Create images table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS images (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,7 +69,6 @@ async function initializeDatabase() {
       )
     `);
 
-    // Create votes table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS votes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -82,7 +81,6 @@ async function initializeDatabase() {
       )
     `);
 
-    // Create comments table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS comments (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,7 +95,6 @@ async function initializeDatabase() {
       )
     `);
 
-    // Create settings table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -110,7 +107,6 @@ async function initializeDatabase() {
       )
     `);
 
-    // Insert default admin user if not exists
     const [existingUsers] = await pool.execute('SELECT id FROM users WHERE username = ?', ['admin']);
     if (existingUsers.length === 0) {
       const bcrypt = require('bcrypt');
@@ -122,7 +118,8 @@ async function initializeDatabase() {
       console.log('👤 Default admin user created (username: admin, password: admin123)');
     }
 
-    // Insert default settings
+    await migrateSchema(pool);
+
     const defaultSettings = [
       { key: 'company_name', value: 'Release Log', type: 'string', description: 'Company/Application Name' },
       { key: 'logo_url', value: '', type: 'string', description: 'Logo URL' },
@@ -140,7 +137,12 @@ async function initializeDatabase() {
       { key: 's3_access_key', value: '', type: 'string', description: 'S3 access key' },
       { key: 's3_secret_key', value: '', type: 'string', description: 'S3 secret key' },
       { key: 's3_cloudfront_url', value: '', type: 'string', description: 'CloudFront URL (optional)' },
-      { key: 'comment_notifications', value: 'true', type: 'boolean', description: 'Send email notifications for new comments' }
+      { key: 'comment_notifications', value: 'true', type: 'boolean', description: 'Send email notifications for new comments' },
+      { key: 'admin_email', value: '', type: 'string', description: 'Admin email for notifications' },
+      { key: 'changelog_max_image_size_bytes', value: String(5 * 1024 * 1024), type: 'number', description: 'Max changelog image upload size in bytes' },
+      { key: 'changelog_max_images_per_entry', value: '10', type: 'number', description: 'Max images per changelog entry' },
+      { key: 'changelog_allowed_image_types', value: 'jpg,jpeg,png,gif,webp', type: 'string', description: 'Comma-separated allowed image extensions/MIME types' },
+      { key: 'show_changelog_author_username', value: 'false', type: 'boolean', description: 'Show author username on public changelog' }
     ];
 
     for (const setting of defaultSettings) {
@@ -161,4 +163,4 @@ module.exports = {
   pool,
   testConnection,
   initializeDatabase
-}; 
+};

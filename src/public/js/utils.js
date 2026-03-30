@@ -122,6 +122,7 @@ class LabelUtils {
         const colors = {
             feature: 'bg-green-100 text-green-800',
             bug: 'bg-red-100 text-red-800',
+            upcoming: 'bg-blue-100 text-blue-800',
             optimization: 'bg-blue-100 text-blue-800'
         };
         return colors[label] || 'bg-gray-100 text-gray-800';
@@ -131,6 +132,7 @@ class LabelUtils {
         const icons = {
             feature: 'fas fa-star',
             bug: 'fas fa-bug',
+            upcoming: 'fas fa-rocket',
             optimization: 'fas fa-rocket'
         };
         return icons[label] || 'fas fa-circle';

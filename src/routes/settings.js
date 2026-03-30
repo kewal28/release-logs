@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { body, validationResult } = require('express-validator');
-const { authenticateUser, requireAdmin } = require('../middleware/auth');
+const { authenticateUser, requireAdmin, requireVerifiedEmail } = require('../middleware/auth');
 const settingsService = require('../services/settings');
 const emailService = require('../services/emailService');
 const fileStorage = require('../services/fileStorage');
@@ -18,6 +18,7 @@ const upload = multer({
 
 // Apply authentication to all settings routes
 router.use(authenticateUser);
+router.use(requireVerifiedEmail);
 
 /**
  * @swagger
@@ -35,12 +36,12 @@ router.use(authenticateUser);
  */
 router.get('/', async (req, res) => {
   try {
-    const config = await settingsService.getAppConfig();
     const themes = settingsService.getAvailableThemes();
     const timezones = settingsService.getAvailableTimezones();
-    
+    await emailService.initialize();
+
     res.json({
-      config,
+      config: await settingsService.getAppConfig({ maskSecrets: true }),
       themes,
       timezones,
       emailStatus: emailService.getStatus()
@@ -175,182 +176,6 @@ router.put('/appearance', [
 
 /**
  * @swagger
- * /api/settings/smtp:
- *   put:
- *     summary: Update SMTP settings
- *     tags: [Settings]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               enabled:
- *                 type: boolean
- *               host:
- *                 type: string
- *               port:
- *                 type: number
- *               user:
- *                 type: string
- *                 description: SMTP username (for AWS SES, this is your Access Key ID)
- *               pass:
- *                 type: string
- *               secure:
- *                 type: boolean
- *     responses:
- *       200:
- *         description: Settings updated successfully
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- */
-router.put('/smtp', requireAdmin, [
-  body('enabled').isBoolean().withMessage('Enabled must be a boolean'),
-  body('host').optional().isString().withMessage('Host must be a string'),
-  body('port').optional().isInt({ min: 1, max: 65535 }).withMessage('Port must be a valid port number'),
-  body('user').optional().isString().withMessage('User must be a string'),
-  body('pass').optional().isString().withMessage('Password must be a string'),
-  body('secure').optional().isBoolean().withMessage('Secure must be a boolean')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { enabled, host, port, user, pass, secure } = req.body;
-
-    // If SMTP is being enabled, validate required fields
-    if (enabled) {
-      const validation = settingsService.validateSMTPSettings({ host, port, user, pass });
-      if (!validation.isValid) {
-        return res.status(400).json({ 
-          error: 'SMTP validation failed',
-          details: validation.errors 
-        });
-      }
-    }
-
-    await Promise.all([
-      settingsService.setSetting('smtp_enabled', enabled, 'boolean', 'Enable SMTP for email notifications'),
-      settingsService.setSetting('smtp_host', host || '', 'string', 'SMTP host'),
-      settingsService.setSetting('smtp_port', port || 587, 'number', 'SMTP port'),
-      settingsService.setSetting('smtp_user', user || '', 'string', 'SMTP username'),
-      settingsService.setSetting('smtp_pass', pass || '', 'string', 'SMTP password'),
-      settingsService.setSetting('smtp_secure', secure !== false, 'boolean', 'Use secure SMTP connection')
-    ]);
-
-    // Reinitialize email service
-    await emailService.reinitialize();
-
-    res.json({ 
-      message: 'SMTP settings updated successfully',
-      emailStatus: emailService.getStatus()
-    });
-  } catch (error) {
-    console.error('Error updating SMTP settings:', error);
-    res.status(500).json({ error: 'Failed to update SMTP settings' });
-  }
-});
-
-/**
- * @swagger
- * /api/settings/s3:
- *   put:
- *     summary: Update S3 settings
- *     tags: [Settings]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               enabled:
- *                 type: boolean
- *               bucket:
- *                 type: string
- *               region:
- *                 type: string
- *               access_key:
- *                 type: string
- *               secret_key:
- *                 type: string
- *               cloudfront_url:
- *                 type: string
- *     responses:
- *       200:
- *         description: Settings updated successfully
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- */
-router.put('/s3', requireAdmin, [
-  body('enabled').isBoolean().withMessage('Enabled must be a boolean'),
-  body('bucket').optional().isString().withMessage('Bucket must be a string'),
-  body('region').optional().isString().withMessage('Region must be a string'),
-  body('access_key').optional().isString().withMessage('Access key must be a string'),
-  body('secret_key').optional().isString().withMessage('Secret key must be a string'),
-  body('cloudfront_url').optional().custom((value) => {
-    if (!value || value === '' || value === null || value === undefined) {
-      return true; // Allow empty values
-    }
-    // Only validate URL if a value is provided
-    const urlRegex = /^https?:\/\/.+/;
-    if (!urlRegex.test(value)) {
-      throw new Error('CloudFront URL must be a valid URL');
-    }
-    return true;
-  })
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { enabled, bucket, region, access_key, secret_key, cloudfront_url } = req.body;
-
-    // If S3 is being enabled, validate required fields
-    if (enabled) {
-      const validation = settingsService.validateS3Settings({ bucket, region, access_key, secret_key });
-      if (!validation.isValid) {
-        return res.status(400).json({ 
-          error: 'S3 validation failed',
-          details: validation.errors 
-        });
-      }
-    }
-
-    await Promise.all([
-      settingsService.setSetting('s3_enabled', enabled, 'boolean', 'Enable S3 storage'),
-      settingsService.setSetting('s3_bucket', bucket || '', 'string', 'S3 bucket name'),
-      settingsService.setSetting('s3_region', region || 'us-east-1', 'string', 'S3 region'),
-      settingsService.setSetting('s3_access_key', access_key || '', 'string', 'S3 access key'),
-      settingsService.setSetting('s3_secret_key', secret_key || '', 'string', 'S3 secret key'),
-      settingsService.setSetting('s3_cloudfront_url', cloudfront_url || '', 'string', 'CloudFront URL (optional)')
-    ]);
-
-    // Reinitialize file storage service
-    await fileStorage.reinitializeS3();
-
-    res.json({ message: 'S3 settings updated successfully' });
-  } catch (error) {
-    console.error('Error updating S3 settings:', error);
-    res.status(500).json({ error: 'Failed to update S3 settings' });
-  }
-});
-
-/**
- * @swagger
  * /api/settings/notifications:
  *   put:
  *     summary: Update notification settings
@@ -406,6 +231,86 @@ router.put('/notifications', requireAdmin, [
     res.status(500).json({ error: 'Failed to update notification settings' });
   }
 });
+
+router.put(
+  '/changelog',
+  requireAdmin,
+  [
+    body('changelog_max_image_size_bytes')
+      .optional()
+      .isInt({ min: 1024, max: 100 * 1024 * 1024 })
+      .withMessage('Max image size must be between 1KB and 100MB'),
+    body('changelog_max_images_per_entry')
+      .optional()
+      .isInt({ min: 1, max: 50 })
+      .withMessage('Max images per entry must be between 1 and 50'),
+    body('changelog_allowed_image_types')
+      .optional()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage('Allowed types string is too long'),
+    body('show_changelog_author_username').optional().isBoolean().withMessage('Must be a boolean')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const u = req.body;
+      const ops = [];
+      if (u.changelog_max_image_size_bytes !== undefined) {
+        ops.push(
+          settingsService.setSetting(
+            'changelog_max_image_size_bytes',
+            u.changelog_max_image_size_bytes,
+            'number',
+            'Max changelog image upload size in bytes'
+          )
+        );
+      }
+      if (u.changelog_max_images_per_entry !== undefined) {
+        ops.push(
+          settingsService.setSetting(
+            'changelog_max_images_per_entry',
+            u.changelog_max_images_per_entry,
+            'number',
+            'Max images per changelog entry'
+          )
+        );
+      }
+      if (u.changelog_allowed_image_types !== undefined) {
+        ops.push(
+          settingsService.setSetting(
+            'changelog_allowed_image_types',
+            u.changelog_allowed_image_types,
+            'string',
+            'Comma-separated allowed image extensions'
+          )
+        );
+      }
+      if (u.show_changelog_author_username !== undefined) {
+        ops.push(
+          settingsService.setSetting(
+            'show_changelog_author_username',
+            u.show_changelog_author_username,
+            'boolean',
+            'Show author username on public changelog'
+          )
+        );
+      }
+      if (ops.length === 0) {
+        return res.status(400).json({ error: 'No changelog settings provided' });
+      }
+      await Promise.all(ops);
+      res.json({ message: 'Changelog settings updated successfully' });
+    } catch (error) {
+      console.error('Error updating changelog settings:', error);
+      res.status(500).json({ error: 'Failed to update changelog settings' });
+    }
+  }
+);
 
 /**
  * @swagger

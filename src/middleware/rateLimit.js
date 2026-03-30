@@ -28,8 +28,8 @@ const publicRateLimit = disableRateLimit ? noRateLimit : rateLimit({
 
 // Rate limiting for voting (more permissive)
 const voteRateLimit = disableRateLimit ? noRateLimit : rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 200, // limit each IP to 200 votes per hour
+  windowMs: parseInt(process.env.RATE_LIMIT_VOTE_WINDOW_MS || `${60 * 60 * 1000}`, 10),
+  max: parseInt(process.env.RATE_LIMIT_VOTE_MAX || '200', 10),
   message: {
     error: 'Too many votes from this IP, please try again later.'
   },
@@ -40,8 +40,8 @@ const voteRateLimit = disableRateLimit ? noRateLimit : rateLimit({
 
 // Rate limiting for comments
 const commentRateLimit = disableRateLimit ? noRateLimit : rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // limit each IP to 20 comments per hour
+  windowMs: parseInt(process.env.RATE_LIMIT_COMMENT_WINDOW_MS || `${60 * 60 * 1000}`, 10),
+  max: parseInt(process.env.RATE_LIMIT_COMMENT_MAX || '20', 10),
   message: {
     error: 'Too many comments from this IP, please try again later.'
   },
@@ -52,8 +52,8 @@ const commentRateLimit = disableRateLimit ? noRateLimit : rateLimit({
 
 // Rate limiting for authentication
 const authRateLimit = disableRateLimit ? noRateLimit : rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 login attempts per 15 minutes
+  windowMs: parseInt(process.env.RATE_LIMIT_AUTH_WINDOW_MS || `${15 * 60 * 1000}`, 10),
+  max: parseInt(process.env.RATE_LIMIT_AUTH_MAX || '20', 10),
   message: {
     error: 'Too many login attempts, please try again later.'
   },
@@ -64,8 +64,8 @@ const authRateLimit = disableRateLimit ? noRateLimit : rateLimit({
 
 // Rate limiting for admin endpoints
 const adminRateLimit = disableRateLimit ? noRateLimit : rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // limit each IP to 500 admin requests per 15 minutes
+  windowMs: parseInt(process.env.RATE_LIMIT_ADMIN_WINDOW_MS || `${15 * 60 * 1000}`, 10),
+  max: parseInt(process.env.RATE_LIMIT_ADMIN_MAX || '500', 10),
   message: {
     error: 'Too many admin requests, please try again later.'
   },

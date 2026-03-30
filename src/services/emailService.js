@@ -12,15 +12,15 @@ class EmailService {
    */
   async initialize() {
     try {
-      const config = await settingsService.getAppConfig();
-      
-      if (!config.smtp.enabled) {
+      const smtp = settingsService.getSmtpFromEnv();
+
+      if (!smtp.enabled) {
         this.isConfigured = false;
         return false;
       }
 
       // Validate SMTP settings
-      const validation = settingsService.validateSMTPSettings(config.smtp);
+      const validation = settingsService.validateSMTPSettings(smtp);
       if (!validation.isValid) {
         console.error('SMTP validation failed:', validation.errors);
         this.isConfigured = false;
@@ -31,12 +31,12 @@ class EmailService {
       const transporterConfigs = [
         // Primary: AWS SES with STARTTLS (port 587)
         {
-          host: config.smtp.host,
-          port: config.smtp.port,
+          host: smtp.host,
+          port: smtp.port,
           secure: false, // STARTTLS will be used
           auth: {
-            user: config.smtp.user,
-            pass: config.smtp.pass
+            user: smtp.user,
+            pass: smtp.pass
           },
           tls: {
             rejectUnauthorized: false,
@@ -48,12 +48,12 @@ class EmailService {
         },
         // Fallback: AWS SES with SSL (port 465)
         {
-          host: config.smtp.host,
+          host: smtp.host,
           port: 465,
           secure: true, // SSL
           auth: {
-            user: config.smtp.user,
-            pass: config.smtp.pass
+            user: smtp.user,
+            pass: smtp.pass
           },
           tls: {
             rejectUnauthorized: false,
@@ -65,12 +65,12 @@ class EmailService {
         },
         // Fallback: Try with user's original settings
         {
-          host: config.smtp.host,
-          port: config.smtp.port,
-          secure: config.smtp.secure,
+          host: smtp.host,
+          port: smtp.port,
+          secure: smtp.secure,
           auth: {
-            user: config.smtp.user,
-            pass: config.smtp.pass
+            user: smtp.user,
+            pass: smtp.pass
           },
           tls: {
             rejectUnauthorized: false
@@ -121,9 +121,11 @@ class EmailService {
 
     try {
       const config = await settingsService.getAppConfig();
-      
+      const smtp = settingsService.getSmtpFromEnv();
+      const fromAddr = smtp.from || smtp.user;
+
       const mailOptions = {
-        from: `"${config.company.name || 'Release Log'}" <${config.smtp.user}>`,
+        from: `"${config.company.name || 'Release Log'}" <${fromAddr}>`,
         to,
         subject,
         html,

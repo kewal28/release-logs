@@ -16,7 +16,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center space-x-4">
-                    <a href="/" class="text-xl font-semibold text-gray-900 hover:text-indigo-600">Release Log</a>
+                    <a href="/" id="homeLink" class="text-xl font-semibold text-gray-900 hover:text-indigo-600">Release Log</a>
                     <button id="backButton" class="flex items-center space-x-2 text-sm text-gray-600 hover:text-indigo-600 transition-colors">
                         <i class="fas fa-arrow-left"></i>
                         <span>Back to Changelogs</span>
@@ -158,6 +158,23 @@
         let changelogSlug = null;
         let appSettings = {};
 
+        function getProjectKey() {
+            const q = new URLSearchParams(window.location.search);
+            const pk = q.get('projectKey') || q.get('pk') || localStorage.getItem('releaseLogProjectKey');
+            if (pk) localStorage.setItem('releaseLogProjectKey', pk);
+            return pk || '';
+        }
+
+        function changelogApiPrefix() {
+            const pk = getProjectKey();
+            return pk ? `/p/${encodeURIComponent(pk)}` : '';
+        }
+
+        function publicExtraQuery() {
+            const loc = new URLSearchParams(window.location.search).get('locale');
+            return loc ? `?locale=${encodeURIComponent(loc)}` : '';
+        }
+
         // Load application settings
         async function loadAppSettings() {
             try {
@@ -167,7 +184,7 @@
                 applyAppSettings();
             } catch (error) {
                 console.error('Error loading app settings:', error);
-        }
+            }
         }
 
         function applyAppSettings() {
@@ -254,7 +271,10 @@
         async function loadChangelog() {
             try {
                 console.log('Loading changelog with slug:', changelogSlug);
-                const response = await Utils.Api.apiRequest(`/changelogs/${changelogSlug}`);
+                const prefix = changelogApiPrefix();
+                const response = await Utils.Api.apiRequest(
+                    `${prefix}/changelogs/${changelogSlug}${publicExtraQuery()}`
+                );
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelog');
 
                 console.log('API Response:', data);
@@ -341,7 +361,7 @@
 
                         <div class="flex items-center justify-between text-sm text-gray-500">
                             <div class="flex items-center space-x-4">
-                                <span>By ${changelog.author_name || 'Unknown'}</span>
+                                ${changelog.author_name ? `<span>By ${changelog.author_name}</span>` : ''}
                                 <span>${Utils.Date.formatDateWithFallback(changelog.published_at, changelog.created_at, true)}</span>
                             </div>
                             <div class="flex items-center space-x-4">
@@ -367,7 +387,10 @@
         // Load comments
         async function loadComments() {
             try {
-                const response = await Utils.Api.apiRequest(`/changelogs/${changelogId}/comments?page=${currentPage}&limit=${commentsPerPage}`);
+                const prefix = changelogApiPrefix();
+                const response = await Utils.Api.apiRequest(
+                    `${prefix}/changelogs/${changelogId}/comments?page=${currentPage}&limit=${commentsPerPage}`
+                );
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to load comments');
 
                 totalComments = data.pagination.total;
@@ -432,7 +455,8 @@
 
         async function submitComment(commentData) {
             try {
-                const response = await Utils.Api.apiRequest(`/changelogs/${changelogId}/comments`, {
+                const prefix = changelogApiPrefix();
+                const response = await Utils.Api.apiRequest(`${prefix}/changelogs/${changelogId}/comments`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(commentData)
@@ -457,11 +481,12 @@
         
         // Back button functionality
         document.getElementById('backButton').addEventListener('click', () => {
-            // Check if we came from a specific page or just go to home
+            const pk = getProjectKey();
+            const home = pk ? `/?projectKey=${encodeURIComponent(pk)}` : '/';
             if (document.referrer && document.referrer.includes(window.location.origin)) {
                 window.history.back();
             } else {
-                window.location.href = '/';
+                window.location.href = home;
             }
         });
 
@@ -479,6 +504,11 @@
         // Initialize page
         window.addEventListener('load', async () => {
             await loadAppSettings();
+            const pk = getProjectKey();
+            const homeEl = document.getElementById('homeLink');
+            if (homeEl) {
+                homeEl.href = pk ? `/?projectKey=${encodeURIComponent(pk)}` : '/';
+            }
             changelogSlug = getChangelogSlug();
             console.log('Initial changelogSlug:', changelogSlug);
             if (changelogSlug) {

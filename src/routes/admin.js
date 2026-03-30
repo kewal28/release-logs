@@ -4,22 +4,223 @@ const { body, validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 const { authenticateUser, requireAdmin } = require('../middleware/auth');
 const fileStorage = require('../services/fileStorage');
+const settingsService = require('../services/settings');
+const { generatePublicKey } = require('../config/schemaMigrate');
 const bcrypt = require('bcryptjs');
 const { adminRateLimit } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-// Configure multer for memory storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 // 5MB
+async function changelogUpload(req, res, next) {
+  try {
+    const maxFileSize = await settingsService.getSetting(
+      'changelog_max_image_size_bytes',
+      parseInt(process.env.MAX_FILE_SIZE, 10) || 5 * 1024 * 1024
+    );
+    const maxCount = await settingsService.getSetting('changelog_max_images_per_entry', 10);
+    multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: maxFileSize }
+    }).array('images', maxCount)(req, res, next);
+  } catch (e) {
+    next(e);
   }
-});
+}
 
 // Apply authentication and rate limiting to all admin routes
 router.use(authenticateUser);
 router.use(adminRateLimit);
+
+router.get('/projects', async (req, res) => {
+  try {
+    let sql = 'SELECT id, name, public_key, created_at FROM projects WHERE user_id = ? ORDER BY id ASC';
+    const params = [req.user.id];
+    if (req.user.is_admin) {
+      sql = 'SELECT id, name, public_key, user_id, created_at FROM projects ORDER BY id DESC';
+      params.length = 0;
+    }
+    const [projects] = params.length ? await pool.execute(sql, params) : await pool.execute(sql);
+    res.json({ projects });
+  } catch (e) {
+    console.error('List projects error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post(
+  '/projects',
+  [body('name').trim().isLength({ min: 1, max: 255 }).withMessage('Name is required')],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      let key = generatePublicKey();
+      let inserted = false;
+      for (let t = 0; t < 8 && !inserted; t++) {
+        try {
+          const [r] = await pool.execute(
+            'INSERT INTO projects (user_id, name, public_key) VALUES (?, ?, ?)',
+            [req.user.id, req.body.name, key]
+          );
+          inserted = true;
+          const [rows] = await pool.execute('SELECT * FROM projects WHERE id = ?', [r.insertId]);
+          return res.status(201).json({ project: rows[0] });
+        } catch (err) {
+          if (err.code === 'ER_DUP_ENTRY') {
+            key = generatePublicKey();
+          } else {
+            throw err;
+          }
+        }
+      }
+      res.status(500).json({ error: 'Could not allocate unique project key' });
+    } catch (e) {
+      console.error('Create project error:', e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+router.get('/dashboard/stats', async (req, res) => {
+  try {
+    const projectId = parseInt(req.query.projectId, 10);
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId query parameter is required' });
+    }
+    const proj = await assertProjectAccess(req, projectId);
+    if (!proj) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const [[{ total }]] = await pool.execute(
+      'SELECT COUNT(*) AS total FROM changelogs WHERE project_id = ?',
+      [projectId]
+    );
+    const [[{ published }]] = await pool.execute(
+      `SELECT COUNT(*) AS published FROM changelogs WHERE project_id = ? AND status = 'published'`,
+      [projectId]
+    );
+    const [[{ upcoming }]] = await pool.execute(
+      `SELECT COUNT(*) AS upcoming FROM changelogs WHERE project_id = ? AND label = 'upcoming'`,
+      [projectId]
+    );
+    const [[{ bugs }]] = await pool.execute(
+      `SELECT COUNT(*) AS bugs FROM changelogs WHERE project_id = ? AND label = 'bug'`,
+      [projectId]
+    );
+    const [[{ features }]] = await pool.execute(
+      `SELECT COUNT(*) AS features FROM changelogs WHERE project_id = ? AND label = 'feature'`,
+      [projectId]
+    );
+    const [[{ comments }]] = await pool.execute(
+      `SELECT COUNT(*) AS comments FROM comments cm
+       INNER JOIN changelogs c ON cm.changelog_id = c.id
+       WHERE c.project_id = ?`,
+      [projectId]
+    );
+    const [[{ upvotes }]] = await pool.execute(
+      `SELECT COALESCE(SUM(c.upvote_count),0) AS upvotes FROM changelogs c WHERE c.project_id = ?`,
+      [projectId]
+    );
+    const [[{ views }]] = await pool.execute(
+      `SELECT COALESCE(SUM(c.view_count),0) AS views FROM changelogs c WHERE c.project_id = ?`,
+      [projectId]
+    );
+    const [[{ files, bytes }]] = await pool.execute(
+      `SELECT COUNT(i.id) AS files, COALESCE(SUM(i.size),0) AS bytes
+       FROM images i
+       INNER JOIN changelogs c ON i.changelog_id = c.id
+       WHERE c.project_id = ?`,
+      [projectId]
+    );
+
+    const [rows] = await pool.execute(
+      `SELECT c.id, c.title, c.status, c.label, c.view_count, c.upvote_count, c.downvote_count,
+        (SELECT COUNT(*) FROM comments cm WHERE cm.changelog_id = c.id) AS comment_count,
+        (SELECT COUNT(*) FROM images im WHERE im.changelog_id = c.id) AS attachment_count,
+        (SELECT COALESCE(SUM(im2.size),0) FROM images im2 WHERE im2.changelog_id = c.id) AS attachment_bytes
+       FROM changelogs c
+       WHERE c.project_id = ?
+       ORDER BY c.updated_at DESC
+       LIMIT 100`,
+      [projectId]
+    );
+
+    res.json({
+      summary: {
+        total_changelogs: total,
+        published,
+        upcoming,
+        bugs,
+        features,
+        comments,
+        total_upvotes: upvotes,
+        total_views: views,
+        total_attachments: files,
+        total_attachment_bytes: bytes
+      },
+      changelogs: rows
+    });
+  } catch (e) {
+    console.error('Dashboard stats error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/projects/:projectId/labels', async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId, 10);
+    const proj = await assertProjectAccess(req, projectId);
+    if (!proj) return res.status(403).json({ error: 'Forbidden' });
+    const [labels] = await pool.execute(
+      'SELECT id, slug, display_name, color FROM project_labels WHERE project_id = ? ORDER BY slug',
+      [projectId]
+    );
+    res.json({ labels });
+  } catch (e) {
+    console.error('List labels error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post(
+  '/projects/:projectId/labels',
+  requireAdmin,
+  [
+    body('slug')
+      .trim()
+      .matches(/^[a-z0-9-]+$/)
+      .withMessage('slug must be lowercase alphanumeric with hyphens'),
+    body('display_name').trim().isLength({ min: 1, max: 128 })
+  ],
+  async (req, res) => {
+    try {
+      if (process.env.ENABLE_CUSTOM_LABELS !== 'true') {
+        return res.status(403).json({ error: 'Custom labels are disabled (set ENABLE_CUSTOM_LABELS=true)' });
+      }
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+      const projectId = parseInt(req.params.projectId, 10);
+      const proj = await assertProjectAccess(req, projectId);
+      if (!proj) return res.status(403).json({ error: 'Forbidden' });
+      const { slug, display_name, color } = req.body;
+      const [r] = await pool.execute(
+        'INSERT INTO project_labels (project_id, slug, display_name, color) VALUES (?, ?, ?, ?)',
+        [projectId, slug, display_name, color || null]
+      );
+      const [rows] = await pool.execute('SELECT * FROM project_labels WHERE id = ?', [r.insertId]);
+      res.status(201).json({ label: rows[0] });
+    } catch (e) {
+      if (e.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: 'Label slug already exists for this project' });
+      }
+      console.error('Create label error:', e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
 
 const slugify = (str) => {
   return str
@@ -31,11 +232,11 @@ const slugify = (str) => {
     .replace(/-+/g, '-');
 };
 
-async function getUniqueSlug(pool, baseSlug, excludeId = null) {
+async function getUniqueSlug(pool, baseSlug, projectId, excludeId = null) {
   let slug = baseSlug;
   let i = 1;
-  let query = 'SELECT id FROM changelogs WHERE slug = ?';
-  let params = [slug];
+  let query = 'SELECT id FROM changelogs WHERE slug = ? AND project_id = ?';
+  let params = [slug, projectId];
   if (excludeId) {
     query += ' AND id != ?';
     params.push(excludeId);
@@ -47,6 +248,36 @@ async function getUniqueSlug(pool, baseSlug, excludeId = null) {
     [rows] = await pool.execute(query, params);
   }
   return slug;
+}
+
+async function assertProjectAccess(req, projectId) {
+  if (!projectId) return null;
+  const [rows] = await pool.execute(
+    'SELECT id FROM projects WHERE id = ? AND (user_id = ? OR ? = 1)',
+    [projectId, req.user.id, req.user.is_admin ? 1 : 0]
+  );
+  return rows[0] || null;
+}
+
+async function assertChangelogEditable(req, changelogId) {
+  const [rows] = await pool.execute(
+    `SELECT c.* FROM changelogs c
+     INNER JOIN projects p ON c.project_id = p.id
+     WHERE c.id = ? AND (p.user_id = ? OR ? = 1 OR c.author_id = ?)`,
+    [changelogId, req.user.id, req.user.is_admin ? 1 : 0, req.user.id]
+  );
+  return rows[0] || null;
+}
+
+async function isLabelAllowedForProject(projectId, label) {
+  const builtIn = ['feature', 'bug', 'upcoming'];
+  if (builtIn.includes(label)) return true;
+  if (process.env.ENABLE_CUSTOM_LABELS !== 'true') return false;
+  const [rows] = await pool.execute(
+    'SELECT id FROM project_labels WHERE project_id = ? AND slug = ?',
+    [projectId, label]
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -82,37 +313,41 @@ async function getUniqueSlug(pool, baseSlug, excludeId = null) {
  */
 router.get('/changelogs', async (req, res) => {
   try {
+    const projectId = parseInt(req.query.projectId, 10);
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId query parameter is required' });
+    }
+    const proj = await assertProjectAccess(req, projectId);
+    if (!proj) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const { status = 'all', page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
-    
-    let whereClause = '';
-    let params = [];
-    
+
+    let whereClause = 'WHERE c.project_id = ?';
+    const params = [projectId];
+
     if (status !== 'all') {
-      whereClause = 'WHERE c.status = ?';
+      whereClause += ' AND c.status = ?';
       params.push(status);
     }
-    
-    // Get total count
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM changelogs c ${whereClause}`,
-      params
-    );
-    
+
+    const [countResult] = await pool.execute(`SELECT COUNT(*) as total FROM changelogs c ${whereClause}`, params);
+
     const total = countResult[0].total;
-    
-    // Get changelogs with author info
+
     const [changelogs] = await pool.execute(
       `SELECT c.*, u.username as author_name,
-              (SELECT COUNT(*) FROM votes v WHERE v.changelog_id = c.id AND v.vote_type = 'upvote') as upvotes,
-              (SELECT COUNT(*) FROM votes v WHERE v.changelog_id = c.id AND v.vote_type = 'downvote') as downvotes,
+              COALESCE(c.upvote_count,0) as upvotes,
+              COALESCE(c.downvote_count,0) as downvotes,
               (SELECT COUNT(*) FROM comments cm WHERE cm.changelog_id = c.id AND cm.is_approved = 1) as comments
        FROM changelogs c
        LEFT JOIN users u ON c.author_id = u.id
        ${whereClause}
        ORDER BY c.created_at DESC
        LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+      [...params, parseInt(limit, 10), offset]
     );
     
     // Get images for each changelog
@@ -168,7 +403,7 @@ router.get('/changelogs', async (req, res) => {
  *                 type: string
  *               label:
  *                 type: string
- *                 enum: [feature, bug, optimization]
+ *                 enum: [feature, bug, upcoming]
  *               images:
  *                 type: array
  *                 items:
@@ -183,10 +418,11 @@ router.get('/changelogs', async (req, res) => {
  *       201:
  *         description: Changelog created successfully
  */
-router.post('/changelogs', upload.array('images', 10), [
+router.post('/changelogs', changelogUpload, [
+  body('projectId').notEmpty().withMessage('projectId is required'),
   body('title').trim().isLength({ min: 1, max: 255 }).withMessage('Title is required and must be less than 255 characters'),
   body('body').trim().isLength({ min: 1 }).withMessage('Body is required'),
-  body('label').isIn(['feature', 'bug', 'optimization']).withMessage('Label must be feature, bug, or optimization'),
+  body('label').trim().isLength({ min: 1, max: 64 }).withMessage('Label is required'),
   body('status').optional().isIn(['draft', 'published']).withMessage('Status must be draft or published')
 ], async (req, res) => {
   try {
@@ -195,24 +431,32 @@ router.post('/changelogs', upload.array('images', 10), [
       return res.status(400).json({ errors: errors.array() });
     }
 
+    const projectId = parseInt(req.body.projectId, 10);
+    const proj = await assertProjectAccess(req, projectId);
+    if (!proj) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const { title, body, label } = req.body;
     let { status } = req.body;
     status = status || 'draft';
     const files = req.files || [];
 
-    // Regular users can only create drafts
+    const labelOk = await isLabelAllowedForProject(projectId, label);
+    if (!labelOk) {
+      return res.status(400).json({ error: 'Invalid label for this project' });
+    }
+
     if (!req.user.is_admin && status === 'published') {
       return res.status(403).json({ error: 'Regular users can only create drafts. Admin approval required for publishing.' });
     }
 
-    // Generate unique slug
     const baseSlug = slugify(title);
-    const slug = await getUniqueSlug(pool, baseSlug);
+    const slug = await getUniqueSlug(pool, baseSlug, projectId);
 
-    // Create changelog
     const [result] = await pool.execute(
-      'INSERT INTO changelogs (title, slug, body, label, status, author_id, published_at) VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = "published" THEN CURRENT_TIMESTAMP ELSE NULL END)',
-      [title, slug, body, label, status, req.user.id, status]
+      'INSERT INTO changelogs (title, slug, body, label, status, author_id, project_id, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = "published" THEN CURRENT_TIMESTAMP ELSE NULL END)',
+      [title, slug, body, label, status, req.user.id, projectId, status]
     );
 
     const changelogId = result.insertId;
@@ -290,7 +534,7 @@ router.post('/changelogs', upload.array('images', 10), [
  *                 type: string
  *               label:
  *                 type: string
- *                 enum: [feature, bug, optimization]
+ *                 enum: [feature, bug, upcoming]
  *               images:
  *                 type: array
  *                 items:
@@ -305,10 +549,10 @@ router.post('/changelogs', upload.array('images', 10), [
  *       200:
  *         description: Changelog updated successfully
  */
-router.put('/changelogs/:id', upload.array('images', 10), [
+router.put('/changelogs/:id', changelogUpload, [
   body('title').optional().trim().isLength({ min: 1, max: 255 }).withMessage('Title must be less than 255 characters'),
   body('body').optional().trim().isLength({ min: 1 }).withMessage('Body cannot be empty'),
-  body('label').optional().isIn(['feature', 'bug', 'optimization']).withMessage('Label must be feature, bug, or optimization'),
+  body('label').optional().trim().isLength({ min: 1, max: 64 }),
   body('status').optional().isIn(['draft', 'published']).withMessage('Status must be draft or published')
 ], async (req, res) => {
   try {
@@ -321,14 +565,16 @@ router.put('/changelogs/:id', upload.array('images', 10), [
     const { title, body, label, status } = req.body;
     const files = req.files || [];
 
-    // Check if changelog exists and user has permission
-    const [changelogs] = await pool.execute(
-      'SELECT * FROM changelogs WHERE id = ? AND author_id = ?',
-      [id, req.user.id]
-    );
-
-    if (changelogs.length === 0) {
+    const existing = await assertChangelogEditable(req, id);
+    if (!existing) {
       return res.status(404).json({ error: 'Changelog not found or access denied' });
+    }
+
+    if (label !== undefined) {
+      const labelOk = await isLabelAllowedForProject(existing.project_id, label);
+      if (!labelOk) {
+        return res.status(400).json({ error: 'Invalid label for this project' });
+      }
     }
 
     // Regular users can only update to draft status
@@ -342,7 +588,7 @@ router.put('/changelogs/:id', upload.array('images', 10), [
     
     if (title !== undefined) {
       const baseSlug = slugify(title);
-      const slug = await getUniqueSlug(pool, baseSlug, id);
+      const slug = await getUniqueSlug(pool, baseSlug, existing.project_id, id);
       updateFields.push('slug = ?');
       updateValues.push(slug);
     }
@@ -449,17 +695,10 @@ router.post('/changelogs/:id/publish', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if changelog exists and user has permission
-    const [changelogs] = await pool.execute(
-      'SELECT * FROM changelogs WHERE id = ? AND author_id = ?',
-      [id, req.user.id]
-    );
-
-    if (changelogs.length === 0) {
+    const changelog = await assertChangelogEditable(req, id);
+    if (!changelog) {
       return res.status(404).json({ error: 'Changelog not found or access denied' });
     }
-
-    const changelog = changelogs[0];
     
     if (changelog.status === 'published') {
       return res.status(400).json({ error: 'Changelog is already published' });
@@ -501,13 +740,8 @@ router.delete('/changelogs/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if changelog exists and user has permission
-    const [changelogs] = await pool.execute(
-      'SELECT * FROM changelogs WHERE id = ? AND author_id = ?',
-      [id, req.user.id]
-    );
-
-    if (changelogs.length === 0) {
+    const changelog = await assertChangelogEditable(req, id);
+    if (!changelog) {
       return res.status(404).json({ error: 'Changelog not found or access denied' });
     }
 
@@ -560,13 +794,8 @@ router.delete('/changelogs/:id/images/:imageId', requireAdmin, async (req, res) 
   try {
     const { id, imageId } = req.params;
 
-    // Check if changelog exists and user has permission
-    const [changelogs] = await pool.execute(
-      'SELECT * FROM changelogs WHERE id = ? AND author_id = ?',
-      [id, req.user.id]
-    );
-
-    if (changelogs.length === 0) {
+    const changelog = await assertChangelogEditable(req, id);
+    if (!changelog) {
       return res.status(404).json({ error: 'Changelog not found or access denied' });
     }
 

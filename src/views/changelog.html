@@ -38,21 +38,18 @@
                     </div>
                     <h1 id="company-name" class="text-xl font-semibold text-gray-900">Release Log</h1>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <!-- Dark/Light mode toggle -->
-                    <!-- <button id="themeToggle" class="text-sm text-gray-600 hover:text-indigo-800 focus:outline-none flex items-center" aria-label="Toggle dark mode">
-                        <i id="themeIcon" class="fas fa-moon"></i>
-                        <span class="ml-2">Dark Mode</span>
-                    </button> -->
-                </div>
+                <nav class="flex items-center gap-4 text-sm text-gray-600">
+                    <a href="/" class="hover:text-gray-900">Home</a>
+                    <a href="/pricing" class="hover:text-gray-900">Pricing</a>
+                    <a href="/documentation" class="hover:text-gray-900">Documentation</a>
+                    <a href="/faq" class="hover:text-gray-900">FAQ</a>
+                    <a href="/login" class="hover:text-gray-900">Sign in</a>
+                </nav>
             </div>
         </div>
     </header>
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div id="projectKeyBanner" class="hidden mx-4 mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3">
-            Add your project public key to the URL, for example <code class="bg-amber-100 px-1 rounded">?projectKey=your_key</code>, or open this page from the admin embed instructions. With a single project, the API may work without a key.
-        </div>
         <!-- Header -->
         <div class="px-4 py-6 sm:px-0">
             <div class="flex justify-between items-center">
@@ -62,7 +59,7 @@
                         <option value="">All Types</option>
                         <option value="feature">Features</option>
                         <option value="bug">Bug Fixes</option>
-                        <option value="upcoming">Upcoming</option>
+                        <option value="optimization">Optimizations</option>
                     </select>
                 </div>
             </div>
@@ -157,18 +154,6 @@
         let changelogs = [];
         let appSettings = {};
 
-        function getProjectKey() {
-            const q = new URLSearchParams(window.location.search);
-            const pk = q.get('projectKey') || q.get('pk') || localStorage.getItem('releaseLogProjectKey');
-            if (pk) localStorage.setItem('releaseLogProjectKey', pk);
-            return pk || '';
-        }
-
-        function changelogApiPrefix() {
-            const pk = getProjectKey();
-            return pk ? `/p/${encodeURIComponent(pk)}` : '';
-        }
-
         // Load application settings
         async function loadAppSettings() {
             try {
@@ -243,20 +228,9 @@
 
         async function loadChangelogs() {
             try {
-                const banner = document.getElementById('projectKeyBanner');
-                if (!getProjectKey()) {
-                    banner.classList.remove('hidden');
-                } else {
-                    banner.classList.add('hidden');
-                }
                 Utils.UI.showLoading('loadingState', 'emptyState', 'changelogsContainer');
                 const label = document.getElementById('labelFilter').value;
-                const prefix = changelogApiPrefix();
-                const loc = new URLSearchParams(window.location.search).get('locale');
-                const locQ = loc ? `&locale=${encodeURIComponent(loc)}` : '';
-                const response = await Utils.Api.apiRequest(
-                    `${prefix}/changelogs?page=${currentPage}&limit=10${label ? `&label=${encodeURIComponent(label)}` : ''}${locQ}`
-                );
+                const response = await Utils.Api.apiRequest(`/changelogs?page=${currentPage}&limit=10${label ? `&label=${label}` : ''}`);
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelogs');
 
                 changelogs = data.changelogs;
@@ -275,15 +249,9 @@
             }
         }
 
-        function detailsQuerySuffix() {
-            const pk = getProjectKey();
-            return pk ? `?projectKey=${encodeURIComponent(pk)}` : '';
-        }
-
         function renderChangelogs() {
             const container = document.getElementById('changelogsContainer');
             const emptyState = document.getElementById('emptyState');
-            const dq = detailsQuerySuffix();
 
             if (changelogs.length === 0) {
                 container.classList.add('hidden');
@@ -301,7 +269,7 @@
                             <div class="flex-1">
                                 <div class="flex items-center space-x-3 mb-2">
                                     <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                        <a href="/details/${changelog.slug}${dq}" class="release-link hover:text-indigo-600 hover:underline cursor-pointer">${changelog.title}</a>
+                                        <a href="/details/${changelog.slug}" class="release-link hover:text-indigo-600 hover:underline cursor-pointer">${changelog.title}</a>
                                     </h3>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${Utils.Label.getLabelColor(changelog.label)}">
                                         <i class="${Utils.Label.getLabelIcon(changelog.label)} mr-1"></i>
@@ -328,8 +296,8 @@
 
                                 <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                                     <div class="flex items-center space-x-4">
-                                        ${changelog.author_name ? `<span class="release-author">By ${changelog.author_name}</span>` : ''}
-                                        <span class="release-date">${Utils.Date.formatDateWithFallback(changelog.published_at, changelog.created_at)}</span>
+                                        <span class="release-author">By ${changelog.author_name}</span>
+                                        <span class="release-date">${Utils.Date.formatDateWithFallback(changelog.release_date || changelog.published_at, changelog.created_at)}</span>
                                     </div>
                                     <div class="flex items-center space-x-4">
                                         <button class="vote-btn upvote-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-green-600" 
@@ -354,29 +322,34 @@
                     </div>
                 </div>
             `).join('');
+            
+            // Add event delegation for button clicks
+            addPublicEventListeners();
         }
-
-        function bindChangelogContainerDelegationOnce() {
+        
+        function addPublicEventListeners() {
             const container = document.getElementById('changelogsContainer');
-            if (!container || container.dataset.delegationBound === '1') return;
-            container.dataset.delegationBound = '1';
+            
+            // Vote button clicks
             container.addEventListener('click', (e) => {
                 if (e.target.closest('.vote-btn')) {
                     const btn = e.target.closest('.vote-btn');
-                    const changelogId = parseInt(btn.dataset.changelogId, 10);
+                    const changelogId = parseInt(btn.dataset.changelogId);
                     const voteType = btn.dataset.voteType;
                     voteChangelog(changelogId, voteType);
-                    return;
                 }
+            });
+            
+            // Comment button clicks
+            container.addEventListener('click', (e) => {
                 if (e.target.closest('.comment-btn')) {
                     const btn = e.target.closest('.comment-btn');
-                    const changelogId = parseInt(btn.dataset.changelogId, 10);
+                    const changelogId = parseInt(btn.dataset.changelogId);
                     const changelog = changelogs.find(c => c.id === changelogId);
-                    const q = detailsQuerySuffix();
                     if (changelog && changelog.slug) {
-                        window.location.href = `/details/${changelog.slug}${q}`;
+                        window.location.href = `/details/${changelog.slug}`;
                     } else {
-                        window.location.href = `/details/${changelogId}${q}`;
+                        window.location.href = `/details/${changelogId}`;
                     }
                 }
             });
@@ -385,22 +358,15 @@
         // Voting functions
         async function voteChangelog(id, voteType) {
             try {
-                const prefix = changelogApiPrefix();
-                const response = await Utils.Api.apiRequest(`${prefix}/changelogs/${id}/vote`, {
+                const response = await Utils.Api.apiRequest(`/changelogs/${id}/vote`, {
                     method: 'POST',
                     body: JSON.stringify({ vote_type: voteType })
                 });
 
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to vote');
-                const container = document.getElementById('changelogsContainer');
-                if (container && data.upvotes != null) {
-                    const upSpan = container.querySelector(`.upvote-btn[data-changelog-id="${id}"] span`);
-                    const downSpan = container.querySelector(`.downvote-btn[data-changelog-id="${id}"] span`);
-                    if (upSpan) upSpan.textContent = data.upvotes;
-                    if (downSpan) downSpan.textContent = data.downvotes;
-                } else {
-                    loadChangelogs();
-                }
+
+                // Reload changelogs to update vote counts
+                loadChangelogs();
             } catch (error) {
                 console.error('Error voting:', error);
                 Utils.Toast.showError(error.message);
@@ -420,20 +386,26 @@
 
         async function submitComment(commentData) {
             const changelogId = document.getElementById('commentChangelogId').value;
-            const prefix = changelogApiPrefix();
 
             try {
-                const response = await Utils.Api.apiRequest(`${prefix}/changelogs/${changelogId}/comments`, {
+                const response = await apiRequest(`/changelogs/${changelogId}/comments`, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(commentData)
                 });
-                const data = await Utils.Api.handleApiResponse(response, 'Failed to submit comment');
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to submit comment');
+                }
+
                 hideCommentModal();
-                loadChangelogs();
-                if (data.message) Utils.Toast.showSuccess(data.message);
+                loadChangelogs(); // Reload to show new comment count
+                alert(data.message);
             } catch (error) {
                 console.error('Error submitting comment:', error);
-                Utils.Toast.showError(error.message);
+                showError(error.message);
             }
         }
 
@@ -460,46 +432,47 @@
 
         // Load changelogs on page load
         window.addEventListener('load', async () => {
-            bindChangelogContainerDelegationOnce();
             await loadAppSettings();
             loadChangelogs();
         });
 
-        // Theme toggle logic (optional; header toggle may be commented out in markup)
+        // Theme toggle logic
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
-        if (themeToggle && themeIcon) {
-            const themeText = themeToggle.querySelector('span');
+        const themeText = themeToggle.querySelector('span');
+        const mainHeader = document.getElementById('mainHeader');
+        const latestUpdates = document.getElementById('latestUpdates');
+        const labelFilter = document.getElementById('labelFilter');
 
-            function updateThemeButton() {
-                const isDark = document.documentElement.classList.contains('dark');
-                if (isDark) {
-                    themeIcon.classList.remove('fa-moon');
-                    themeIcon.classList.add('fa-sun');
-                    if (themeText) themeText.textContent = 'Light Mode';
-                } else {
-                    themeIcon.classList.remove('fa-sun');
-                    themeIcon.classList.add('fa-moon');
-                    if (themeText) themeText.textContent = 'Dark Mode';
-                }
+        function updateThemeButton() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+                themeText.textContent = 'Light Mode';
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+                themeText.textContent = 'Dark Mode';
             }
-
-            document.addEventListener('DOMContentLoaded', () => {
-                updateThemeButton();
-            });
-
-            themeToggle.addEventListener('click', () => {
-                const isDark = document.documentElement.classList.contains('dark');
-                if (isDark) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                }
-                updateThemeButton();
-            });
         }
+
+        // On load, set button state
+        document.addEventListener('DOMContentLoaded', () => {
+            updateThemeButton();
+        });
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateThemeButton();
+        });
     </script>
 </body>
 </html> 

@@ -15,7 +15,7 @@ const authenticateToken = async (req, res, next) => {
     
     // Get user from database to ensure they still exist and are admin
     const [users] = await pool.execute(
-      'SELECT id, username, email, is_admin FROM users WHERE id = ?',
+      'SELECT id, username, email, is_admin, email_verified FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -52,7 +52,7 @@ const authenticateUser = async (req, res, next) => {
     
     // Get user from database to ensure they still exist
     const [users] = await pool.execute(
-      'SELECT id, username, email, is_admin FROM users WHERE id = ?',
+      'SELECT id, username, email, is_admin, email_verified FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -103,9 +103,32 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+const requireVerifiedEmail = async (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  try {
+    const [rows] = await pool.execute(
+      'SELECT email_verified FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    if (!rows.length || !rows[0].email_verified) {
+      return res.status(403).json({
+        error: 'Please verify your email to access the dashboard.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+    next();
+  } catch (e) {
+    console.error('requireVerifiedEmail:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 module.exports = {
   authenticateToken,
   authenticateUser,
   requireAdmin,
+  requireVerifiedEmail,
   optionalAuth
 }; 

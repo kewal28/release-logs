@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ — Release Log</title>
+  <meta name="description" content="Frequently asked questions about Release Log.">
+  <link rel="stylesheet" href="/css/marketing.css">
+</head>
+<body class="marketing">
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="/" style="font-weight:600;">Release Log</a>
+      <nav class="nav-links"><a href="/documentation">Docs</a><a href="/pricing">Pricing</a></nav>
+      <div class="nav-cta"><a href="/login" class="btn-pill">Sign in</a><a href="/signup" class="btn-pill primary">Sign up</a></div>
+    </div>
+  </header>
+  <main class="section alt" style="padding-top:48px;">
+    <div class="section-inner" style="max-width:640px;">
+      <h2>FAQ</h2>
+      <details class="card" style="margin-bottom:12px;"><summary style="cursor:pointer;font-weight:600;">Why didn’t I receive a verification email?</summary><p style="margin-top:12px;color:var(--muted);">Check spam. Your host must have SMTP configured via environment variables. See documentation.</p></details>
+      <details class="card" style="margin-bottom:12px;"><summary style="cursor:pointer;font-weight:600;">Where do I configure S3 or SMTP?</summary><p style="margin-top:12px;color:var(--muted);">In <code>.env</code> only—not in the database. Same for SaaS and self-host.</p></details>
+      <details class="card" style="margin-bottom:12px;"><summary style="cursor:pointer;font-weight:500;">Is Redis required?</summary><p style="margin-top:12px;color:var(--muted);">No. If <code>REDIS_URL</code> is unset, the app reads from MySQL only.</p></details>
+      <details class="card"><summary style="cursor:pointer;font-weight:600;">Where is the public changelog?</summary><p style="margin-top:12px;color:var(--muted);">At <a href="/changelog">/changelog</a>.</p></details>
+    </div>
+  </main>
+  <footer class="footer"><a href="/">Home</a></footer>
+</body>
+</html>

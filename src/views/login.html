@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — Release Log</title>
+  <meta name="description" content="Sign in to your Release Log dashboard.">
+  <link rel="stylesheet" href="/css/marketing.css">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="marketing bg-gray-50 min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+    <h1 class="text-2xl font-semibold text-center text-gray-900">Sign in</h1>
+    <p class="text-center text-sm text-gray-500 mt-2">Use your email and password</p>
+    <form id="form" class="mt-8 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" id="email" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Password</label>
+        <input type="password" id="password" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+      </div>
+      <p id="err" class="text-sm text-red-600 hidden"></p>
+      <button type="submit" class="w-full py-2.5 rounded-full bg-gray-900 text-white text-sm font-medium hover:bg-gray-800">Continue</button>
+    </form>
+    <p class="text-center text-sm text-gray-500 mt-6">No account? <a href="/signup" class="text-gray-900 underline">Sign up</a></p>
+    <p class="text-center text-sm mt-4"><a href="/" class="text-gray-500">← Home</a></p>
+  </div>
+  <script>
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('err');
+      err.classList.add('hidden');
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        err.textContent = data.error || 'Sign in failed';
+        err.classList.remove('hidden');
+        return;
+      }
+      localStorage.setItem('token', data.token);
+      if (!data.user.email_verified) {
+        window.location.href = '/dashboard';
+        return;
+      }
+      window.location.href = '/dashboard';
+    });
+  </script>
+</body>
+</html>

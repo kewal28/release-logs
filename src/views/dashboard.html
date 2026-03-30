@@ -1,9 +1,11 @@
+<<<<<<< Current (Your changes)
+=======
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Release Log - Admin Panel</title>
+    <title>Release Log — Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="/js/utils.js"></script>
@@ -37,7 +39,16 @@
         </div>
     </div>
 
-    <!-- Login Form -->
+    <div id="unverifiedGate" class="hidden min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center space-y-4">
+            <h2 class="text-xl font-semibold text-gray-900">Verify your email</h2>
+            <p class="text-sm text-gray-600">We sent a link to <span id="uvEmail" class="font-medium"></span>. After verifying, refresh this page.</p>
+            <button type="button" id="resendVerifyBtn" class="w-full py-2 rounded-md bg-gray-200 text-gray-900 text-sm font-medium hover:bg-gray-300">Resend email</button>
+            <button type="button" id="logoutUvBtn" class="w-full py-2 text-sm text-gray-500 hover:text-gray-800">Sign out</button>
+        </div>
+    </div>
+
+    <!-- Login Form (legacy — redirects to /login) -->
     <div id="loginForm" class="hidden min-h-screen flex items-center justify-center">
         <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
             <div>
@@ -87,7 +98,7 @@
                         <button id="changePasswordBtn" class="text-sm text-gray-600 hover:text-gray-900">
                             <i class="fas fa-key mr-1"></i>Change Password
                         </button>
-                        <a href="/admin/settings" class="text-sm text-gray-600 hover:text-gray-900">
+                        <a href="/dashboard/settings" class="text-sm text-gray-600 hover:text-gray-900">
                             <i class="fas fa-cog mr-1"></i>Settings
                         </a>
                         <button id="logoutBtn" class="text-sm text-red-600 hover:text-red-800">Logout</button>
@@ -101,10 +112,7 @@
             <div class="px-4 py-6 sm:px-0">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
-                        <button id="dashboardTab" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                            Dashboard
-                        </button>
-                        <button id="changelogsTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                        <button id="changelogsTab" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
                             Changelogs
                         </button>
                         <button id="commentsTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
@@ -117,95 +125,23 @@
                 </div>
             </div>
 
-            <!-- Dashboard Tab Content -->
-            <div id="dashboardTabContent">
-                <div class="px-4 py-6 sm:px-0 space-y-6">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <label class="text-sm font-medium text-gray-700">Project</label>
-                        <select id="projectSelectDash" class="border border-gray-300 rounded-md px-3 py-2 text-sm"></select>
-                        <button type="button" id="newProjectBtn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ New project</button>
-                    </div>
-                    <p id="embedKeyDisplayDash" class="text-xs text-gray-500 font-mono break-all"></p>
-                    <div id="dashboardLoading" class="text-gray-500 text-sm">Loading stats…</div>
-                    <div id="dashboardGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="rounded-2xl p-6 text-white shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-                            <p class="text-xs uppercase tracking-wide opacity-90">Total changelogs</p>
-                            <p id="statTotal" class="text-3xl font-bold mt-1">0</p>
-                        </div>
-                        <div class="rounded-2xl p-6 text-white shadow-lg bg-gradient-to-br from-blue-500 to-cyan-600">
-                            <p class="text-xs uppercase tracking-wide opacity-90">Published</p>
-                            <p id="statPublished" class="text-3xl font-bold mt-1">0</p>
-                        </div>
-                        <div class="rounded-2xl p-6 text-white shadow-lg bg-gradient-to-br from-amber-500 to-orange-600">
-                            <p class="text-xs uppercase tracking-wide opacity-90">Upcoming</p>
-                            <p id="statUpcoming" class="text-3xl font-bold mt-1">0</p>
-                        </div>
-                        <div class="rounded-2xl p-6 text-white shadow-lg bg-gradient-to-br from-rose-500 to-pink-600">
-                            <p class="text-xs uppercase tracking-wide opacity-90">Bugs</p>
-                            <p id="statBugs" class="text-3xl font-bold mt-1">0</p>
-                        </div>
-                    </div>
-                    <div id="dashboardSecondary" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-white rounded-xl shadow p-4 border border-gray-100">
-                            <p class="text-sm text-gray-500">Comments</p>
-                            <p id="statComments" class="text-2xl font-semibold text-gray-900">0</p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow p-4 border border-gray-100">
-                            <p class="text-sm text-gray-500">Total upvotes</p>
-                            <p id="statUpvotes" class="text-2xl font-semibold text-gray-900">0</p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow p-4 border border-gray-100">
-                            <p class="text-sm text-gray-500">Total views</p>
-                            <p id="statViews" class="text-2xl font-semibold text-gray-900">0</p>
-                        </div>
-                    </div>
-                    <div id="dashboardFiles" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-white rounded-xl shadow p-4 border border-gray-100">
-                            <p class="text-sm text-gray-500">Attachments (count)</p>
-                            <p id="statFiles" class="text-2xl font-semibold text-gray-900">0</p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow p-4 border border-gray-100">
-                            <p class="text-sm text-gray-500">Storage used</p>
-                            <p id="statBytes" class="text-2xl font-semibold text-gray-900">0</p>
-                        </div>
-                    </div>
-                    <div id="dashboardTableWrap" class="hidden bg-white rounded-xl shadow overflow-hidden border border-gray-100">
-                        <div class="px-4 py-3 border-b border-gray-100 font-medium text-gray-900">Changelog metrics</div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50 text-left text-gray-600">
-                                    <tr>
-                                        <th class="px-4 py-2">Title</th>
-                                        <th class="px-4 py-2">Status</th>
-                                        <th class="px-4 py-2">Label</th>
-                                        <th class="px-4 py-2">Views</th>
-                                        <th class="px-4 py-2">Upvotes</th>
-                                        <th class="px-4 py-2">Comments</th>
-                                        <th class="px-4 py-2">Files</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dashboardChangelogBody" class="divide-y divide-gray-100"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Changelogs Tab Content -->
-            <div id="changelogsTabContent" class="hidden">
+            <div id="changelogsTabContent">
                 <!-- Header -->
                 <div class="px-4 py-6 sm:px-0">
-                    <div class="flex justify-between items-center flex-wrap gap-3">
+                    <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Changelogs</h2>
                         <button id="newChangelogBtn" 
                                 class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <i class="fas fa-plus mr-2"></i>New Changelog
                         </button>
                     </div>
-                    <div class="mt-3 flex flex-wrap items-center gap-3">
-                        <label class="text-sm text-gray-600">Project</label>
-                        <select id="projectSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm"></select>
-                        <span id="embedKeyDisplay" class="text-xs text-gray-500 font-mono break-all max-w-xl"></span>
+
+                    <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <h3 class="text-sm font-semibold text-gray-900">Embed / short code</h3>
+                        <p class="text-xs text-gray-600 mt-1 mb-3">Public changelog URL and a minimal HTML snippet. Adjust styling on your site as needed.</p>
+                        <textarea id="embedSnippet" readonly rows="4" class="w-full text-xs font-mono border border-gray-300 rounded p-2 bg-white text-gray-800"></textarea>
+                        <button type="button" id="copyEmbedBtn" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium">Copy snippet</button>
                     </div>
 
                     <!-- Filters -->
@@ -468,7 +404,7 @@
                             <option value="">Select a label</option>
                             <option value="feature">Feature</option>
                             <option value="bug">Bug</option>
-                            <option value="upcoming">Upcoming</option>
+                            <option value="optimization">Optimization</option>
                         </select>
                     </div>
 
@@ -479,6 +415,12 @@
                             <option value="draft">Draft</option>
                             <option value="published">Published</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label for="release_date" class="block text-sm font-medium text-gray-700">Release date</label>
+                        <input type="date" id="release_date" name="release_date" required
+                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
 
                     <div>
@@ -629,121 +571,6 @@
         let currentPage = 1;
         let totalPages = 1;
         let changelogs = [];
-        let projects = [];
-        let currentProjectId = null;
-
-        function formatBytes(n) {
-            const x = Number(n) || 0;
-            if (x < 1024) return `${x} B`;
-            if (x < 1024 * 1024) return `${(x / 1024).toFixed(1)} KB`;
-            if (x < 1024 * 1024 * 1024) return `${(x / 1024 / 1024).toFixed(1)} MB`;
-            return `${(x / 1024 / 1024 / 1024).toFixed(2)} GB`;
-        }
-
-        function updateEmbedKeyDisplay() {
-            const p = projects.find((x) => x.id === currentProjectId);
-            const t = p ? `Public key: ${p.public_key}` : '';
-            const a = document.getElementById('embedKeyDisplay');
-            const b = document.getElementById('embedKeyDisplayDash');
-            if (a) a.textContent = t;
-            if (b) b.textContent = t;
-        }
-
-        function syncProjectSelects() {
-            const opts = projects.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
-            ['projectSelect', 'projectSelectDash'].forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) el.innerHTML = opts;
-            });
-            if (projects.length) {
-                const saved = localStorage.getItem('currentProjectId');
-                let pid = projects[0].id;
-                if (saved && projects.some((p) => String(p.id) === saved)) {
-                    pid = parseInt(saved, 10);
-                }
-                currentProjectId = pid;
-                ['projectSelect', 'projectSelectDash'].forEach((id) => {
-                    const el = document.getElementById(id);
-                    if (el) el.value = String(pid);
-                });
-                localStorage.setItem('currentProjectId', String(pid));
-                updateEmbedKeyDisplay();
-            }
-        }
-
-        function onProjectChange(e) {
-            currentProjectId = parseInt(e.target.value, 10);
-            localStorage.setItem('currentProjectId', String(currentProjectId));
-            ['projectSelect', 'projectSelectDash'].forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) el.value = String(currentProjectId);
-            });
-            updateEmbedKeyDisplay();
-            loadDashboardStats();
-            loadChangelogs();
-        }
-
-        async function loadProjects() {
-            try {
-                const response = await Utils.Api.apiRequest('/admin/projects');
-                const data = await Utils.Api.handleApiResponse(response, 'Failed to load projects');
-                projects = data.projects || [];
-                if (!projects.length) {
-                    Utils.Toast.showInfo('Create a project from the dashboard (+ New project) to continue.');
-                    switchTab('dashboard');
-                    return;
-                }
-                syncProjectSelects();
-                switchTab('dashboard');
-                await loadDashboardStats();
-                loadChangelogs();
-            } catch (error) {
-                Utils.Toast.showError(error.message);
-            }
-        }
-
-        async function loadDashboardStats() {
-            if (!currentProjectId) return;
-            const loading = document.getElementById('dashboardLoading');
-            if (loading) loading.classList.remove('hidden');
-            try {
-                const res = await Utils.Api.apiRequest(`/admin/dashboard/stats?projectId=${currentProjectId}`);
-                const d = await Utils.Api.handleApiResponse(res, 'Failed to load stats');
-                const s = d.summary;
-                document.getElementById('statTotal').textContent = s.total_changelogs;
-                document.getElementById('statPublished').textContent = s.published;
-                document.getElementById('statUpcoming').textContent = s.upcoming;
-                document.getElementById('statBugs').textContent = s.bugs;
-                document.getElementById('statComments').textContent = s.comments;
-                document.getElementById('statUpvotes').textContent = s.total_upvotes;
-                document.getElementById('statViews').textContent = s.total_views;
-                document.getElementById('statFiles').textContent = s.total_attachments;
-                document.getElementById('statBytes').textContent = formatBytes(Number(s.total_attachment_bytes) || 0);
-                const body = document.getElementById('dashboardChangelogBody');
-                body.innerHTML = (d.changelogs || [])
-                    .map(
-                        (r) => `
-                    <tr>
-                        <td class="px-4 py-2 font-medium text-gray-900">${r.title}</td>
-                        <td class="px-4 py-2">${r.status}</td>
-                        <td class="px-4 py-2">${r.label}</td>
-                        <td class="px-4 py-2">${r.view_count}</td>
-                        <td class="px-4 py-2">${r.upvote_count}</td>
-                        <td class="px-4 py-2">${r.comment_count}</td>
-                        <td class="px-4 py-2">${r.attachment_count} (${formatBytes(Number(r.attachment_bytes) || 0)})</td>
-                    </tr>`
-                    )
-                    .join('');
-                ['dashboardGrid', 'dashboardSecondary', 'dashboardFiles', 'dashboardTableWrap'].forEach((id) => {
-                    const el = document.getElementById(id);
-                    if (el) el.classList.remove('hidden');
-                });
-            } catch (e) {
-                Utils.Toast.showError(e.message);
-            } finally {
-                if (loading) loading.classList.add('hidden');
-            }
-        }
 
         // Authentication functions
         async function login(username, password) {
@@ -758,7 +585,7 @@
                 localStorage.setItem('token', data.token);
                 currentUser = data.user;
                 showDashboard();
-                loadProjects();
+                loadChangelogs();
             } catch (error) {
                 Utils.UI.showError(error.message);
             }
@@ -834,16 +661,11 @@
 
         async function loadChangelogs() {
             try {
-                if (!currentProjectId) {
-                    Utils.Toast.showError('Select a project first');
-                    return;
-                }
                 console.log('Loading changelogs...');
                 Utils.UI.showLoading('changelogsLoadingState', 'emptyState', 'changelogsTable');
                 const status = document.getElementById('statusFilter').value;
-                const q = `/admin/changelogs?projectId=${currentProjectId}&status=${status}&page=${currentPage}&limit=10`;
-                console.log('Making API request to:', q);
-                const response = await Utils.Api.apiRequest(q);
+                console.log('Making API request to:', `/admin/changelogs?status=${status}&page=${currentPage}&limit=10`);
+                const response = await Utils.Api.apiRequest(`/admin/changelogs?status=${status}&page=${currentPage}&limit=10`);
                 console.log('API response:', response);
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelogs');
                 console.log('API data:', data);
@@ -895,7 +717,7 @@
                             <p class="mt-1 text-sm text-gray-600 line-clamp-2">${changelog.body.substring(0, 150)}${changelog.body.length > 150 ? '...' : ''}</p>
                             <div class="mt-2 flex items-center space-x-4 text-sm text-gray-500">
                                 <span>By ${changelog.author_name}</span>
-                                <span>${Utils.Date.formatDate(changelog.created_at, true)}</span>
+                                <span>Release ${Utils.Date.formatDate(changelog.release_date || changelog.published_at || changelog.created_at, false)}</span>
                                 <span>👍 ${changelog.upvotes}</span>
                                 <span>💬 ${changelog.comments}</span>
                             </div>
@@ -977,6 +799,12 @@
                 
                 document.getElementById('label').value = changelog ? changelog.label : '';
                 document.getElementById('status').value = changelog ? changelog.status : 'draft';
+                const rdEl = document.getElementById('release_date');
+                if (changelog && changelog.release_date) {
+                    rdEl.value = String(changelog.release_date).slice(0, 10);
+                } else {
+                    rdEl.value = new Date().toISOString().slice(0, 10);
+                }
                 
                 // Disable status field for regular users
                 const statusField = document.getElementById('status');
@@ -1136,29 +964,35 @@
         // Event listeners
         document.getElementById('loginFormElement').addEventListener('submit', (e) => {
             e.preventDefault();
-            Utils.UI.hideError();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            login(username, password);
+            window.location.href = '/login';
+        });
+
+        document.getElementById('resendVerifyBtn').addEventListener('click', async () => {
+            try {
+                const response = await apiRequest('/auth/resend-verification', { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) Utils.Toast.showSuccess(data.message || 'Sent');
+                else Utils.Toast.showError(data.error || 'Failed to resend');
+            } catch (err) {
+                Utils.Toast.showError(err.message);
+            }
+        });
+        document.getElementById('logoutUvBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
         });
 
         document.getElementById('logoutBtn').addEventListener('click', logout);
 
-        document.getElementById('projectSelect').addEventListener('change', onProjectChange);
-        document.getElementById('projectSelectDash').addEventListener('change', onProjectChange);
-        document.getElementById('newProjectBtn').addEventListener('click', async () => {
-            const name = prompt('Project name?');
-            if (!name || !name.trim()) return;
+        document.getElementById('copyEmbedBtn').addEventListener('click', async () => {
+            const ta = document.getElementById('embedSnippet');
             try {
-                const response = await Utils.Api.apiRequest('/admin/projects', {
-                    method: 'POST',
-                    body: JSON.stringify({ name: name.trim() })
-                });
-                await Utils.Api.handleApiResponse(response, 'Failed to create project');
-                Utils.Toast.showSuccess('Project created');
-                await loadProjects();
-            } catch (err) {
-                Utils.Toast.showError(err.message);
+                await navigator.clipboard.writeText(ta.value);
+                Utils.Toast.showSuccess('Copied to clipboard');
+            } catch (e) {
+                ta.select();
+                document.execCommand('copy');
+                Utils.Toast.showSuccess('Copied to clipboard');
             }
         });
 
@@ -1184,9 +1018,6 @@
             }
             
             formData.set('body', richTextContent);
-            if (!document.getElementById('changelogId').value) {
-                formData.append('projectId', currentProjectId);
-            }
             saveChangelog(formData);
         });
 
@@ -1238,9 +1069,7 @@
         let commentsTotalPages = 1;
         let comments = [];
 
-        document.getElementById('dashboardTab').addEventListener('click', () => {
-            switchTab('dashboard');
-        });
+        // Tab switching
         document.getElementById('changelogsTab').addEventListener('click', () => {
             switchTab('changelogs');
         });
@@ -1248,6 +1077,25 @@
         document.getElementById('commentsTab').addEventListener('click', () => {
             switchTab('comments');
         });
+
+        function switchTab(tab) {
+            if (tab === 'changelogs') {
+                document.getElementById('changelogsTab').classList.add('border-indigo-500', 'text-indigo-600');
+                document.getElementById('changelogsTab').classList.remove('border-transparent', 'text-gray-500');
+                document.getElementById('commentsTab').classList.remove('border-indigo-500', 'text-indigo-600');
+                document.getElementById('commentsTab').classList.add('border-transparent', 'text-gray-500');
+                document.getElementById('changelogsTabContent').classList.remove('hidden');
+                document.getElementById('commentsTabContent').classList.add('hidden');
+            } else {
+                document.getElementById('commentsTab').classList.add('border-indigo-500', 'text-indigo-600');
+                document.getElementById('commentsTab').classList.remove('border-transparent', 'text-gray-500');
+                document.getElementById('changelogsTab').classList.remove('border-indigo-500', 'text-indigo-600');
+                document.getElementById('changelogsTab').classList.add('border-transparent', 'text-gray-500');
+                document.getElementById('commentsTabContent').classList.remove('hidden');
+                document.getElementById('changelogsTabContent').classList.add('hidden');
+                loadComments();
+            }
+        }
 
         async function loadComments() {
             try {
@@ -1446,36 +1294,38 @@
             switchTab('team');
         });
 
+        // Update switchTab function to include team tab and role-based access
         function switchTab(tab) {
+            // Check if user has access to this tab
             if (!currentUser.is_admin && (tab === 'comments' || tab === 'team')) {
                 Utils.Toast.showError('Admin access required for this feature');
                 return;
             }
 
-            const tabs = ['dashboard', 'changelogs', 'comments', 'team'];
-            tabs.forEach((t) => {
+            // Reset all tabs
+            const tabs = ['changelogs', 'comments', 'team'];
+            tabs.forEach(t => {
                 const tabElement = document.getElementById(`${t}Tab`);
                 const contentElement = document.getElementById(`${t}TabContent`);
-                if (!tabElement || !contentElement) return;
+                
                 tabElement.classList.remove('border-indigo-500', 'text-indigo-600');
                 tabElement.classList.add('border-transparent', 'text-gray-500');
                 contentElement.classList.add('hidden');
             });
 
+            // Activate selected tab
             const selectedTab = document.getElementById(`${tab}Tab`);
             const selectedContent = document.getElementById(`${tab}TabContent`);
+            
             selectedTab.classList.add('border-indigo-500', 'text-indigo-600');
             selectedTab.classList.remove('border-transparent', 'text-gray-500');
             selectedContent.classList.remove('hidden');
 
+            // Load content based on tab
             if (tab === 'comments') {
                 loadComments();
             } else if (tab === 'team') {
                 loadTeamMembers();
-            } else if (tab === 'dashboard') {
-                loadDashboardStats();
-            } else if (tab === 'changelogs') {
-                loadChangelogs();
             }
         }
 
@@ -1737,19 +1587,41 @@
         function showLoading() {
             document.getElementById('loadingState').classList.remove('hidden');
             document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('unverifiedGate').classList.add('hidden');
             document.getElementById('adminDashboard').classList.add('hidden');
         }
 
         function showLogin() {
+            window.location.href = '/login';
+        }
+
+        function showUnverifiedGate(user) {
             document.getElementById('loadingState').classList.add('hidden');
-            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('unverifiedGate').classList.remove('hidden');
             document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('uvEmail').textContent = user.email || '';
+        }
+
+        function refreshEmbedSnippet() {
+            const base = window.location.origin;
+            const url = `${base}/changelog`;
+            const lines = [
+                `<!-- Link to your public changelog -->`,
+                `<a href="${url}">View changelog</a>`,
+                ``,
+                `<!-- Optional: inline frame (set height to fit your layout) -->`,
+                `<iframe src="${url}" title="Changelog" style="width:100%;min-height:480px;border:1px solid #e5e7eb;border-radius:8px;"></iframe>`
+            ];
+            const el = document.getElementById('embedSnippet');
+            if (el) el.value = lines.join('\n');
         }
 
         function showDashboard() {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('unverifiedGate').classList.add('hidden');
             document.getElementById('adminDashboard').classList.remove('hidden');
+            refreshEmbedSnippet();
             
             // Show role-based content
             if (currentUser && currentUser.is_admin) {
@@ -1786,8 +1658,12 @@
                 if (data.user) {
                     console.log('User authenticated:', data.user);
                     currentUser = data.user;
+                    if (!data.user.email_verified) {
+                        showUnverifiedGate(data.user);
+                        return;
+                    }
                     showDashboard();
-                    loadProjects();
+                    loadChangelogs();
                 } else {
                     console.log('No user in response, showing login');
                     localStorage.removeItem('token');
@@ -1802,3 +1678,4 @@
     </script>
 </body>
 </html> 
+>>>>>>> Incoming (Background Agent changes)

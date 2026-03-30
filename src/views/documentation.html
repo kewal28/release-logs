@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — Release Log</title>
+  <meta name="description" content="Release Log documentation and setup guides.">
+  <link rel="stylesheet" href="/css/marketing.css">
+</head>
+<body class="marketing">
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="/" style="font-weight:600;">Release Log</a>
+      <nav class="nav-links"><a href="/faq">FAQ</a><a href="/pricing">Pricing</a></nav>
+      <div class="nav-cta"><a href="/login" class="btn-pill">Sign in</a></div>
+    </div>
+  </header>
+  <main class="hero" style="padding-top:48px;">
+    <h1>Documentation</h1>
+    <p>Product guides are published via GitBook (sync the repo <code>/docs</code> folder). Set <code>DOCS_PUBLIC_URL</code> in your environment to link your live manual.</p>
+    <a id="docsLink" href="/api-docs" class="btn-pill primary" style="padding:12px 28px;font-size:14px;">Open documentation</a>
+    <p class="sub" style="margin-top:32px;">Interactive API: <a href="/api-docs">Swagger UI</a> · Changelog: <a href="/changelog">/changelog</a></p>
+  </main>
+  <script>
+    (async () => {
+      const a = document.getElementById('docsLink');
+      try {
+        const r = await fetch('/api/public/config');
+        const j = await r.json();
+        if (j.docsPublicUrl) {
+          a.href = j.docsPublicUrl;
+          a.textContent = 'Open GitBook';
+        }
+      } catch (_) {}
+    })();
+  </script>
+  <footer class="footer"><a href="/">Home</a></footer>
+</body>
+</html>

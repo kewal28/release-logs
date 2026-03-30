@@ -1,21 +1,38 @@
+#!/usr/bin/env node
+/**
+ * Single entrypoint: create DB if needed, run bootstrap (tables + migrations).
+ * Usage: node scripts/setup.js | npm run setup
+ *        node scripts/setup.js slugs  — backfill unique slugs for changelogs
+ */
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const path = require('path');
 
-async function setupDatabase() {
-  let connection;
-  
-  try {
-    console.log('🚀 Setting up Release Log database...');
-    
-    // Connect to MySQL server (without specifying database)
-    connection = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      port: process.env.DB_PORT || 3306,
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-    });
+const slugify = (str) =>
+  str
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
 
+<<<<<<< Current (Your changes)
+async function createDatabaseIfNeeded() {
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || ''
+  });
+  const dbName = process.env.DB_NAME || 'release_log';
+  await conn.query(
+    `CREATE DATABASE IF NOT EXISTS \`${dbName.replace(/`/g, '')}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+  );
+  await conn.end();
+  console.log(`📦 Database ready: ${dbName}`);
+}
+=======
     const dbName = process.env.DB_NAME || 'release_log_db';
     
     // Create database if it doesn't exist
@@ -45,7 +62,7 @@ async function setupDatabase() {
         id INT PRIMARY KEY AUTO_INCREMENT,
         title VARCHAR(255) NOT NULL,
         body TEXT NOT NULL,
-        label ENUM('feature', 'bug', 'optimization') NOT NULL,
+        label VARCHAR(64) NOT NULL DEFAULT 'feature',
         status ENUM('draft', 'published') DEFAULT 'draft',
         author_id INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -98,51 +115,61 @@ async function setupDatabase() {
         FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
       )
     `);
+>>>>>>> Incoming (Background Agent changes)
 
-    // Create indexes for better performance
-    console.log('⚡ Creating indexes...');
-    await connection.query('CREATE INDEX idx_changelogs_status ON changelogs(status)');
-    await connection.query('CREATE INDEX idx_changelogs_author ON changelogs(author_id)');
-    await connection.query('CREATE INDEX idx_votes_changelog ON votes(changelog_id)');
-    await connection.query('CREATE INDEX idx_comments_changelog ON comments(changelog_id)');
-    await connection.query('CREATE INDEX idx_comments_approved ON comments(is_approved)');
+async function runSlugBackfill() {
+  const { pool } = require(path.join(__dirname, '..', 'src', 'config', 'database'));
+  const [rows] = await pool.execute('SELECT id, title FROM changelogs');
+  const usedSlugs = new Set();
 
-    // Create default admin user if no users exist
-    const [users] = await connection.query('SELECT COUNT(*) as count FROM users');
-    
-    if (users[0].count === 0) {
-      console.log('👤 Creating default admin user...');
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      
-      await connection.query(`
-        INSERT INTO users (username, email, password_hash, is_admin) 
-        VALUES (?, ?, ?, ?)
-      `, ['admin', 'admin@example.com', hashedPassword, true]);
-      
-      console.log('✅ Default admin user created:');
-      console.log('   Username: admin');
-      console.log('   Password: admin123');
-      console.log('   Email: admin@example.com');
-      console.log('⚠️  Please change these credentials after first login!');
+  async function getUniqueSlug(baseSlug, excludeId) {
+    let slug = baseSlug;
+    let i = 1;
+    while (usedSlugs.has(slug)) {
+      slug = `${baseSlug}-${i++}`;
     }
-
-    console.log('✅ Database setup completed successfully!');
-    console.log(`📊 Database: ${dbName}`);
-    console.log(`🌐 Server will run on port: ${process.env.PORT || 3000}`);
-
-  } catch (error) {
-    console.error('❌ Database setup failed:', error.message);
-    process.exit(1);
-  } finally {
-    if (connection) {
-      await connection.end();
+    let q = 'SELECT id FROM changelogs WHERE slug = ?';
+    const params = [slug];
+    if (excludeId) {
+      q += ' AND id != ?';
+      params.push(excludeId);
     }
+    let [conflicts] = await pool.execute(q, params);
+    while (conflicts.length > 0) {
+      slug = `${baseSlug}-${i++}`;
+      params[0] = slug;
+      [conflicts] = await pool.execute(q, params);
+    }
+    usedSlugs.add(slug);
+    return slug;
   }
+
+  for (const row of rows) {
+    let baseSlug = slugify(row.title) || `changelog-${row.id}`;
+    const slug = await getUniqueSlug(baseSlug, row.id);
+    await pool.execute('UPDATE changelogs SET slug = ? WHERE id = ?', [slug, row.id]);
+    console.log(`Slug for #${row.id}: ${slug}`);
+  }
+  await pool.end();
+  console.log('✅ Slug backfill done');
 }
 
-// Run setup if this file is executed directly
-if (require.main === module) {
-  setupDatabase();
+async function main() {
+  const cmd = process.argv[2];
+  if (cmd === 'slugs') {
+    await runSlugBackfill();
+    return;
+  }
+
+  await createDatabaseIfNeeded();
+
+  const { testConnection, initializeDatabase } = require(path.join(__dirname, '..', 'src', 'config', 'database'));
+  await testConnection();
+  await initializeDatabase();
+  console.log('✅ Setup complete. Start with: npm start');
 }
 
-module.exports = setupDatabase; 
+main().catch((err) => {
+  console.error('❌ Setup failed:', err.message);
+  process.exit(1);
+});

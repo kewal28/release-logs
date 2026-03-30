@@ -25,10 +25,25 @@ This document explains the rate limiting configuration for the Release Log appli
 
 ### Environment Variables (`.env`)
 
+All limits are read from the environment (see `src/middleware/rateLimit.js` and `env.example`).
+
 ```bash
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000        # 15 minutes in milliseconds
-RATE_LIMIT_MAX_REQUESTS=1000       # 1000 requests per window
+# Disable every limiter (e.g. local dev)
+DISABLE_RATE_LIMIT=false
+
+# General public API traffic (applied to most /api routes after mount)
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=1000
+
+# Votes, comments, auth, admin (per-IP, per process)
+RATE_LIMIT_VOTE_WINDOW_MS=3600000
+RATE_LIMIT_VOTE_MAX=200
+RATE_LIMIT_COMMENT_WINDOW_MS=3600000
+RATE_LIMIT_COMMENT_MAX=20
+RATE_LIMIT_AUTH_WINDOW_MS=900000
+RATE_LIMIT_AUTH_MAX=20
+RATE_LIMIT_ADMIN_WINDOW_MS=900000
+RATE_LIMIT_ADMIN_MAX=500
 ```
 
 ### Application Rate Limits (`src/middleware/rateLimit.js`)

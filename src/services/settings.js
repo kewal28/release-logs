@@ -1,9 +1,48 @@
 const { pool } = require('../config/database');
+const cache = require('./cache');
 
 class SettingsService {
   constructor() {
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  getSmtpFromEnv() {
+    const host = process.env.SMTP_HOST || '';
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const user = process.env.SMTP_USER || '';
+    const pass = process.env.SMTP_PASS || '';
+    const secure = process.env.SMTP_SECURE !== 'false' && process.env.SMTP_SECURE !== '0';
+    const from = process.env.SMTP_FROM || user;
+    const enabled =
+      process.env.SMTP_ENABLED === 'true' ||
+      process.env.SMTP_ENABLED === '1' ||
+      (!!host && !!user && !!pass);
+    return { enabled, host, port, user, pass, secure, from };
+  }
+
+  getS3FromEnv() {
+    const bucket = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || '';
+    const region = process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1';
+    const accessKey = process.env.AWS_ACCESS_KEY_ID || '';
+    const secretKey = process.env.AWS_SECRET_ACCESS_KEY || '';
+    const cloudfrontUrl = (process.env.AWS_CLOUDFRONT_DOMAIN || '').replace(/^https?:\/\//, '');
+    const enabled =
+      process.env.S3_ENABLED === 'true' ||
+      process.env.S3_ENABLED === '1' ||
+      (!!bucket && !!accessKey && !!secretKey);
+    return {
+      enabled,
+      bucket,
+      region,
+      accessKey,
+      secretKey,
+      cloudfrontUrl
+    };
+  }
+
+  async invalidatePublicCache() {
+    await cache.del(cache.publicSettingsKey);
   }
 
   /**
@@ -98,6 +137,9 @@ class SettingsService {
 
       // Clear cache for this key
       this.cache.delete(key);
+      if (['company_name', 'logo_url', 'theme', 'timezone'].includes(key)) {
+        await this.invalidatePublicCache();
+      }
 
       return true;
     } catch (error) {
@@ -155,46 +197,29 @@ class SettingsService {
   /**
    * Get application configuration
    */
-  async getAppConfig() {
-    const [
-      companyName,
-      logoUrl,
-      theme,
-      timezone,
-      smtpEnabled,
-      smtpHost,
-      smtpPort,
-      smtpUser,
-      smtpPass,
-      smtpSecure,
-      s3Enabled,
-      s3Bucket,
-      s3Region,
-      s3AccessKey,
-      s3SecretKey,
-      s3CloudfrontUrl,
-      commentNotifications,
-      adminEmail
-    ] = await Promise.all([
+  async getAppConfig(options = {}) {
+    const { maskSecrets = false } = options;
+    const [companyName, logoUrl, theme, timezone, commentNotifications, adminEmail] = await Promise.all([
       this.getSetting('company_name', 'Release Log'),
       this.getSetting('logo_url', ''),
       this.getSetting('theme', 'indigo'),
       this.getSetting('timezone', 'UTC'),
-      this.getSetting('smtp_enabled', false),
-      this.getSetting('smtp_host', ''),
-      this.getSetting('smtp_port', 587),
-      this.getSetting('smtp_user', ''),
-      this.getSetting('smtp_pass', ''),
-      this.getSetting('smtp_secure', true),
-      this.getSetting('s3_enabled', false),
-      this.getSetting('s3_bucket', ''),
-      this.getSetting('s3_region', 'us-east-1'),
-      this.getSetting('s3_access_key', ''),
-      this.getSetting('s3_secret_key', ''),
-      this.getSetting('s3_cloudfront_url', ''),
       this.getSetting('comment_notifications', true),
-      this.getSetting('admin_email', '')
+      this.getSetting('admin_email', ''),
+      this.getSetting('changelog_max_image_size_bytes', 5 * 1024 * 1024),
+      this.getSetting('changelog_max_images_per_entry', 10),
+      this.getSetting('changelog_allowed_image_types', 'jpg,jpeg,png,gif,webp'),
+      this.getSetting('show_changelog_author_username', false)
     ]);
+
+    const smtp = this.getSmtpFromEnv();
+    const s3 = this.getS3FromEnv();
+
+    if (maskSecrets) {
+      smtp.pass = smtp.pass ? '********' : '';
+      s3.secretKey = s3.secretKey ? '********' : '';
+      s3.accessKey = s3.accessKey ? '********' : '';
+    }
 
     return {
       company: {
@@ -205,27 +230,33 @@ class SettingsService {
         theme,
         timezone
       },
-      smtp: {
-        enabled: smtpEnabled,
-        host: smtpHost,
-        port: smtpPort,
-        user: smtpUser,
-        pass: smtpPass,
-        secure: smtpSecure
-      },
-      s3: {
-        enabled: s3Enabled,
-        bucket: s3Bucket,
-        region: s3Region,
-        accessKey: s3AccessKey,
-        secretKey: s3SecretKey,
-        cloudfrontUrl: s3CloudfrontUrl
-      },
+      smtp,
+      s3,
       notifications: {
         comments: commentNotifications,
         adminEmail: adminEmail
+      },
+      changelog: {
+        maxImageSizeBytes: changelogMaxImageSizeBytes,
+        maxImagesPerEntry: changelogMaxImagesPerEntry,
+        allowedImageTypes: changelogAllowedImageTypes,
+        showAuthorUsername: showChangelogAuthorUsername
       }
     };
+  }
+
+  /** Cached subset for public API */
+  async getPublicAppSettings() {
+    const ttl = parseInt(process.env.CACHE_PUBLIC_SETTINGS_TTL || '120', 10);
+    const hit = await cache.getJson(cache.publicSettingsKey);
+    if (hit) return hit;
+    const config = await this.getAppConfig();
+    const publicSettings = {
+      company: config.company,
+      appearance: config.appearance
+    };
+    await cache.setJson(cache.publicSettingsKey, publicSettings, ttl);
+    return publicSettings;
   }
 
   /**

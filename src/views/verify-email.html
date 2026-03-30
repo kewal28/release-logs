@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify email — Release Log</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
+  <div class="max-w-md text-center bg-white rounded-2xl border border-gray-200 p-8">
+    <p id="msg" class="text-gray-700">Verifying…</p>
+    <a href="/login" class="inline-block mt-6 text-sm text-gray-900 underline">Sign in</a>
+  </div>
+  <script>
+    (async () => {
+      const p = new URLSearchParams(window.location.search);
+      const token = p.get('token');
+      const msg = document.getElementById('msg');
+      if (!token) {
+        msg.textContent = 'Missing token. Open the link from your email.';
+        return;
+      }
+      const res = await fetch('/api/auth/verify-email?token=' + encodeURIComponent(token));
+      const data = await res.json().catch(() => ({}));
+      msg.textContent = res.ok ? (data.message || 'Verified! You can sign in.') : (data.error || 'Verification failed.');
+    })();
+  </script>
+</body>
+</html>

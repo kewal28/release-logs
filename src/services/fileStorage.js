@@ -6,6 +6,11 @@ const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 const settingsService = require('./settings');
 
+function normalizeCloudfront(domain) {
+  if (!domain) return null;
+  return String(domain).replace(/^https?:\/\//, '').replace(/\/$/, '');
+}
+
 class FileStorageService {
   constructor() {
     this.uploadPath = process.env.UPLOAD_PATH || './uploads';
@@ -32,9 +37,9 @@ class FileStorageService {
 
   async initializeS3() {
     try {
-      const config = await settingsService.getAppConfig();
-      
-      if (!config.s3.enabled) {
+      const s3cfg = settingsService.getS3FromEnv();
+
+      if (!s3cfg.enabled) {
         this.s3 = null;
         this.s3Bucket = null;
         this.s3Region = null;
@@ -43,26 +48,24 @@ class FileStorageService {
         return false;
       }
 
-      // Validate S3 settings
-      const validation = settingsService.validateS3Settings(config.s3);
+      const validation = settingsService.validateS3Settings(s3cfg);
       if (!validation.isValid) {
         console.error('S3 validation failed:', validation.errors);
         this.s3 = null;
         return false;
       }
 
-      // Initialize S3 client
       this.s3 = new S3Client({
-        region: config.s3.region,
+        region: s3cfg.region,
         credentials: {
-          accessKeyId: config.s3.accessKey,
-          secretAccessKey: config.s3.secretKey,
+          accessKeyId: s3cfg.accessKey,
+          secretAccessKey: s3cfg.secretKey
         }
       });
 
-      this.s3Bucket = config.s3.bucket;
-      this.s3Region = config.s3.region;
-      this.cloudfrontDomain = config.s3.cloudfrontUrl || null;
+      this.s3Bucket = s3cfg.bucket;
+      this.s3Region = s3cfg.region;
+      this.cloudfrontDomain = normalizeCloudfront(s3cfg.cloudfrontUrl);
 
       console.log('✅ S3 storage configured');
       return true;
@@ -73,23 +76,41 @@ class FileStorageService {
     }
   }
 
-  validateFile(file) {
+  async getUploadLimits() {
+    const maxFileSize = await settingsService.getSetting(
+      'changelog_max_image_size_bytes',
+      parseInt(process.env.MAX_FILE_SIZE, 10) || 5 * 1024 * 1024
+    );
+    const typesStr = await settingsService.getSetting(
+      'changelog_allowed_image_types',
+      process.env.ALLOWED_IMAGE_TYPES || 'jpg,jpeg,png,gif,webp'
+    );
+    const allowedTypes = String(typesStr)
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    return { maxFileSize, allowedTypes };
+  }
+
+  validateFile(file, limits) {
+    const maxFileSize = limits?.maxFileSize ?? this.maxFileSize;
+    const allowedTypes = limits?.allowedTypes ?? this.allowedTypes;
+
     if (!file) {
       throw new Error('No file provided');
     }
 
-    // Skip validation for empty files (optional uploads)
     if (!file.buffer || file.buffer.length === 0) {
-      return false; // Indicates file should be skipped
+      return false;
     }
 
-    if (file.size > this.maxFileSize) {
-      throw new Error(`File size exceeds maximum allowed size of ${this.maxFileSize / 1024 / 1024}MB`);
+    if (file.size > maxFileSize) {
+      throw new Error(`File size exceeds maximum allowed size of ${maxFileSize / 1024 / 1024}MB`);
     }
 
     const fileExtension = path.extname(file.originalname).toLowerCase().substring(1);
-    if (!this.allowedTypes.includes(fileExtension)) {
-      throw new Error(`File type not allowed. Allowed types: ${this.allowedTypes.join(', ')}`);
+    if (!allowedTypes.includes(fileExtension)) {
+      throw new Error(`File type not allowed. Allowed types: ${allowedTypes.join(', ')}`);
     }
 
     return true;
@@ -114,7 +135,8 @@ class FileStorageService {
   }
 
   async uploadFile(file) {
-    const isValid = this.validateFile(file);
+    const limits = await this.getUploadLimits();
+    const isValid = this.validateFile(file, limits);
     
     // Skip upload if file is empty or invalid
     if (!isValid) {

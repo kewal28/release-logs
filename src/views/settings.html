@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Admin Panel</title>
+    <title>Settings — Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="/js/utils.js"></script>
@@ -135,8 +135,8 @@
                     <h1 class="text-xl font-semibold text-gray-900">Settings</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="/admin" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Admin
+                    <a href="/dashboard" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to dashboard
                     </a>
                     <button id="logout-btn" class="text-gray-600 hover:text-gray-900">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -156,14 +156,14 @@
                 <button id="tab-appearance" class="tab-button px-3 py-2 font-medium text-sm rounded-md" data-tab="appearance">
                     <i class="fas fa-palette mr-2"></i>Appearance
                 </button>
-                <button id="tab-smtp" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="smtp">
-                    <i class="fas fa-envelope mr-2"></i>SMTP
-                </button>
-                <button id="tab-s3" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="s3">
-                    <i class="fas fa-cloud mr-2"></i>S3 Storage
+                <button id="tab-env" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="env">
+                    <i class="fas fa-server mr-2"></i>Email &amp; storage (env)
                 </button>
                 <button id="tab-notifications" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="notifications">
                     <i class="fas fa-bell mr-2"></i>Notifications
+                </button>
+                <button id="tab-changelog" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="changelog">
+                    <i class="fas fa-file-alt mr-2"></i>Changelog &amp; public
                 </button>
             </nav>
         </div>
@@ -237,134 +237,32 @@
             </div>
         </div>
 
-        <!-- SMTP Settings Tab -->
-        <div id="smtp-tab" class="tab-content hidden">
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-6">SMTP Settings</h2>
-                <p class="text-sm text-gray-600 mb-6">Configure SMTP for email notifications. For AWS SES, use your SES SMTP credentials (not your AWS access keys).</p>
-                
-                <form id="smtp-form" class="space-y-6">
-                    <div class="flex items-center">
-                        <input type="checkbox" id="smtp-enabled" name="enabled" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                        <label for="smtp-enabled" class="ml-2 block text-sm text-gray-900">Enable SMTP for email notifications</label>
-                    </div>
+        <!-- Email & object storage (environment variables only) -->
+        <div id="env-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6 space-y-6">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900">Email &amp; file storage</h2>
+                    <p class="text-sm text-gray-600 mt-2">
+                        SMTP and S3 are configured only via server environment variables (see <code class="text-xs bg-gray-100 px-1 rounded">env.example</code> in the repository).
+                        They are not stored in the database and cannot be edited from this UI.
+                    </p>
+                </div>
 
-                    <div id="smtp-fields" class="space-y-4 hidden">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="smtp-host" class="block text-sm font-medium text-gray-700">SMTP Host</label>
-                                <input type="text" id="smtp-host" name="host" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                       placeholder="email-smtp.us-east-1.amazonaws.com">
-                                <p class="mt-1 text-sm text-gray-500">For AWS SES: email-smtp.{region}.amazonaws.com</p>
-                            </div>
-                            <div>
-                                <label for="smtp-port" class="block text-sm font-medium text-gray-700">SMTP Port</label>
-                                <input type="number" id="smtp-port" name="port" value="587" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <p class="mt-1 text-sm text-gray-500">587 (STARTTLS) or 465 (SSL) for AWS SES</p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="smtp-user" class="block text-sm font-medium text-gray-700">SMTP Username</label>
-                                <input type="text" id="smtp-user" name="user" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                       placeholder="AKIAIOSFODNN7EXAMPLE">
-                                <p class="mt-1 text-sm text-gray-500">For AWS SES, use your SES SMTP username (not your AWS access key)</p>
-                            </div>
-                            <div>
-                                <label for="smtp-pass" class="block text-sm font-medium text-gray-700">SMTP Password</label>
-                                <input type="password" id="smtp-pass" name="pass" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <p class="mt-1 text-sm text-gray-500">For AWS SES, use your SES SMTP password (not your AWS secret key)</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center">
-                            <input type="checkbox" id="smtp-secure" name="secure" checked
-                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                            <label for="smtp-secure" class="ml-2 block text-sm text-gray-900">Use secure connection (SSL/TLS)</label>
-                        </div>
-                        <p class="text-sm text-gray-500">For AWS SES: Uncheck for port 587 (STARTTLS), check for port 465 (SSL)</p>
-
-                        <div class="flex space-x-4">
-                            <button type="button" id="test-smtp-btn" class="btn-secondary">
-                                <i class="fas fa-paper-plane mr-2"></i>Test SMTP
-                            </button>
-                            <div id="smtp-status" class="flex items-center text-sm">
-                                <!-- Status will be shown here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-save mr-2"></i>Save SMTP Settings
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">SMTP (from env)</h3>
+                    <div id="smtp-status" class="text-sm mb-4"></div>
+                    <dl id="env-smtp-dl" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"></dl>
+                    <div class="mt-4">
+                        <button type="button" id="test-smtp-btn" class="btn-secondary">
+                            <i class="fas fa-paper-plane mr-2"></i>Send test email
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
+                </div>
 
-        <!-- S3 Settings Tab -->
-        <div id="s3-tab" class="tab-content hidden">
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-6">S3 Storage Settings</h2>
-                
-                <form id="s3-form" class="space-y-6">
-                    <div class="flex items-center">
-                        <input type="checkbox" id="s3-enabled" name="enabled" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                        <label for="s3-enabled" class="ml-2 block text-sm text-gray-900">Enable S3 storage for images</label>
-                    </div>
-
-                    <div id="s3-fields" class="space-y-4 hidden">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="s3-bucket" class="block text-sm font-medium text-gray-700">S3 Bucket Name</label>
-                                <input type="text" id="s3-bucket" name="bucket" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label for="s3-region" class="block text-sm font-medium text-gray-700">S3 Region</label>
-                                <select id="s3-region" name="region" required
-                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="us-east-1">US East (N. Virginia)</option>
-                                    <option value="us-west-2">US West (Oregon)</option>
-                                    <option value="eu-west-1">Europe (Ireland)</option>
-                                    <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="s3-access-key" class="block text-sm font-medium text-gray-700">Access Key ID</label>
-                                <input type="text" id="s3-access-key" name="access_key" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label for="s3-secret-key" class="block text-sm font-medium text-gray-700">Secret Access Key</label>
-                                <input type="password" id="s3-secret-key" name="secret_key" required
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="s3-cloudfront-url" class="block text-sm font-medium text-gray-700">CloudFront URL (Optional)</label>
-                            <input type="url" id="s3-cloudfront-url" name="cloudfront_url"
-                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            <p class="mt-1 text-sm text-gray-500">If you have CloudFront configured, enter the distribution URL</p>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-save mr-2"></i>Save S3 Settings
-                        </button>
-                    </div>
-                </form>
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">S3 / object storage (from env)</h3>
+                    <dl id="env-s3-dl" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"></dl>
+                </div>
             </div>
         </div>
 
@@ -393,6 +291,45 @@
                     <div class="flex justify-end">
                         <button type="submit" class="btn-primary">
                             <i class="fas fa-save mr-2"></i>Save Notification Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Changelog & public settings -->
+        <div id="changelog-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-2">Changelog uploads &amp; public display</h2>
+                <p class="text-sm text-gray-600 mb-6">These values apply to admin image uploads. <code class="text-xs bg-gray-100 px-1 rounded">MAX_FILE_SIZE</code> and <code class="text-xs bg-gray-100 px-1 rounded">ALLOWED_IMAGE_TYPES</code> in the environment still override when set.</p>
+
+                <form id="changelog-form" class="space-y-6">
+                    <div>
+                        <label for="changelog-max-bytes" class="block text-sm font-medium text-gray-700">Max image size (bytes)</label>
+                        <input type="number" id="changelog-max-bytes" name="changelog_max_image_size_bytes" min="1024" step="1" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <p class="mt-1 text-sm text-gray-500">Default 5242880 (5&nbsp;MB).</p>
+                    </div>
+                    <div>
+                        <label for="changelog-max-images" class="block text-sm font-medium text-gray-700">Max images per changelog</label>
+                        <input type="number" id="changelog-max-images" name="changelog_max_images_per_entry" min="1" max="50" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="changelog-allowed-types" class="block text-sm font-medium text-gray-700">Allowed extensions</label>
+                        <input type="text" id="changelog-allowed-types" name="changelog_allowed_image_types" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="jpg,jpeg,png,gif,webp">
+                        <p class="mt-1 text-sm text-gray-500">Comma-separated, no dots.</p>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="show-changelog-author" name="show_changelog_author_username"
+                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="show-changelog-author" class="ml-2 block text-sm text-gray-900">Show author username on the public changelog</label>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Save
                         </button>
                     </div>
                 </form>
@@ -465,12 +402,6 @@
             document.getElementById('close-modal-btn').addEventListener('click', function() { closeModal('test-smtp-modal'); });
             document.getElementById('cancel-modal-btn').addEventListener('click', function() { closeModal('test-smtp-modal'); });
             document.getElementById('send-test-email-btn').addEventListener('click', sendTestEmail);
-            // Tab switching
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    showTab(this.dataset.tab);
-                });
-            });
             // Theme selection (event delegation)
             document.getElementById('theme-options').addEventListener('click', function(e) {
                 if (e.target.classList.contains('theme-preview')) {
@@ -489,6 +420,10 @@
                     }
                 });
 
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/login';
+                    return;
+                }
                 if (!response.ok) {
                     throw new Error('Failed to load settings');
                 }
@@ -554,32 +489,18 @@
             populateTimezones();
             document.getElementById('timezone').value = currentSettings.appearance?.timezone || 'UTC';
 
-            // SMTP settings
-            const smtpEnabled = document.getElementById('smtp-enabled');
-            smtpEnabled.checked = currentSettings.smtp?.enabled || false;
-            toggleSMTPFields();
-
-            document.getElementById('smtp-host').value = currentSettings.smtp?.host || '';
-            document.getElementById('smtp-port').value = currentSettings.smtp?.port || 587;
-            document.getElementById('smtp-user').value = currentSettings.smtp?.user || '';
-            document.getElementById('smtp-pass').value = currentSettings.smtp?.pass || '';
-            document.getElementById('smtp-secure').checked = currentSettings.smtp?.secure !== false;
-
-            // S3 settings
-            const s3Enabled = document.getElementById('s3-enabled');
-            s3Enabled.checked = currentSettings.s3?.enabled || false;
-            toggleS3Fields();
-
-            document.getElementById('s3-bucket').value = currentSettings.s3?.bucket || '';
-            document.getElementById('s3-region').value = currentSettings.s3?.region || 'us-east-1';
-            document.getElementById('s3-access-key').value = currentSettings.s3?.accessKey || '';
-            document.getElementById('s3-secret-key').value = currentSettings.s3?.secretKey || '';
-            document.getElementById('s3-cloudfront-url').value = currentSettings.s3?.cloudfrontUrl || '';
+            populateEnvReadouts();
 
             // Notification settings
             document.getElementById('comment-notifications').checked = currentSettings.notifications?.comments !== false;
             document.getElementById('admin-email').value = currentSettings.notifications?.adminEmail || '';
             toggleNotificationFields();
+
+            const ch = currentSettings.changelog || {};
+            document.getElementById('changelog-max-bytes').value = ch.maxImageSizeBytes ?? 5242880;
+            document.getElementById('changelog-max-images').value = ch.maxImagesPerEntry ?? 10;
+            document.getElementById('changelog-allowed-types').value = ch.allowedImageTypes || 'jpg,jpeg,png,gif,webp';
+            document.getElementById('show-changelog-author').checked = !!ch.showAuthorUsername;
         }
 
         function populateThemes() {
@@ -660,26 +581,43 @@
             }
         }
 
-        function toggleSMTPFields() {
-            const enabled = document.getElementById('smtp-enabled').checked;
-            const fields = document.getElementById('smtp-fields');
-            
-            if (enabled) {
-                fields.classList.remove('hidden');
-            } else {
-                fields.classList.add('hidden');
-            }
+        function renderEnvDl(dlId, pairs) {
+            const el = document.getElementById(dlId);
+            if (!el) return;
+            el.innerHTML = '';
+            pairs.forEach(([label, value]) => {
+                const dt = document.createElement('dt');
+                dt.className = 'text-gray-500';
+                dt.textContent = label;
+                const dd = document.createElement('dd');
+                dd.className = 'font-mono text-gray-900 break-all';
+                const v = value === undefined || value === null || value === '' ? '—' : String(value);
+                dd.textContent = v;
+                el.appendChild(dt);
+                el.appendChild(dd);
+            });
         }
 
-        function toggleS3Fields() {
-            const enabled = document.getElementById('s3-enabled').checked;
-            const fields = document.getElementById('s3-fields');
-            
-            if (enabled) {
-                fields.classList.remove('hidden');
-            } else {
-                fields.classList.add('hidden');
-            }
+        function populateEnvReadouts() {
+            const sm = currentSettings.smtp || {};
+            renderEnvDl('env-smtp-dl', [
+                ['Enabled', sm.enabled ? 'yes' : 'no'],
+                ['Host', sm.host],
+                ['Port', sm.port],
+                ['User', sm.user],
+                ['Password', sm.pass || '—'],
+                ['From', sm.from],
+                ['Secure (TLS)', sm.secure ? 'yes' : 'no']
+            ]);
+            const s3 = currentSettings.s3 || {};
+            renderEnvDl('env-s3-dl', [
+                ['Enabled', s3.enabled ? 'yes' : 'no'],
+                ['Bucket', s3.bucket],
+                ['Region', s3.region],
+                ['Access key', s3.accessKey],
+                ['Secret key', s3.secretKey],
+                ['CloudFront domain', s3.cloudfrontUrl || '—']
+            ]);
         }
 
         function toggleNotificationFields() {
@@ -713,13 +651,9 @@
             // Form submissions
             document.getElementById('company-form').addEventListener('submit', saveCompanySettings);
             document.getElementById('appearance-form').addEventListener('submit', saveAppearanceSettings);
-            document.getElementById('smtp-form').addEventListener('submit', saveSMTPSettings);
-            document.getElementById('s3-form').addEventListener('submit', saveS3Settings);
             document.getElementById('notifications-form').addEventListener('submit', saveNotificationSettings);
+            document.getElementById('changelog-form').addEventListener('submit', saveChangelogSettings);
 
-            // Toggle fields
-            document.getElementById('smtp-enabled').addEventListener('change', toggleSMTPFields);
-            document.getElementById('s3-enabled').addEventListener('change', toggleS3Fields);
             document.getElementById('comment-notifications').addEventListener('change', toggleNotificationFields);
 
             // Logo URL change
@@ -826,86 +760,6 @@
             }
         }
 
-        async function saveSMTPSettings(e) {
-            e.preventDefault();
-            
-            try {
-                showLoading();
-                const formData = new FormData(e.target);
-                const data = {
-                    enabled: formData.get('enabled') === 'on',
-                    host: formData.get('host'),
-                    port: parseInt(formData.get('port')),
-                    user: formData.get('user'),
-                    pass: formData.get('pass'),
-                    secure: formData.get('secure') === 'on'
-                };
-
-                const response = await fetch('/api/settings/smtp', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save SMTP settings');
-                }
-
-                const result = await response.json();
-                showToast('SMTP settings saved successfully', 'success');
-                updateSMTPStatus(result.emailStatus);
-                await loadSettings();
-            } catch (error) {
-                console.error('Error saving SMTP settings:', error);
-                showToast(error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function saveS3Settings(e) {
-            e.preventDefault();
-            
-            try {
-                showLoading();
-                const formData = new FormData(e.target);
-                const data = {
-                    enabled: formData.get('enabled') === 'on',
-                    bucket: formData.get('bucket'),
-                    region: formData.get('region'),
-                    access_key: formData.get('access_key'),
-                    secret_key: formData.get('secret_key'),
-                    cloudfront_url: formData.get('cloudfront_url')
-                };
-
-                const response = await fetch('/api/settings/s3', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save S3 settings');
-                }
-
-                showToast('S3 settings saved successfully', 'success');
-                await loadSettings();
-            } catch (error) {
-                console.error('Error saving S3 settings:', error);
-                showToast(error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
         async function saveNotificationSettings(e) {
             e.preventDefault();
             
@@ -944,6 +798,39 @@
             } catch (error) {
                 console.error('Error saving notification settings:', error);
                 showToast('Error saving notification settings', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function saveChangelogSettings(e) {
+            e.preventDefault();
+            try {
+                showLoading();
+                const formData = new FormData(e.target);
+                const data = {
+                    changelog_max_image_size_bytes: parseInt(formData.get('changelog_max_image_size_bytes'), 10),
+                    changelog_max_images_per_entry: parseInt(formData.get('changelog_max_images_per_entry'), 10),
+                    changelog_allowed_image_types: (formData.get('changelog_allowed_image_types') || '').trim(),
+                    show_changelog_author_username: formData.get('show_changelog_author_username') === 'on'
+                };
+                const response = await fetch('/api/settings/changelog', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    const errBody = await response.json().catch(() => ({}));
+                    throw new Error(errBody.error || 'Failed to save changelog settings');
+                }
+                showToast('Changelog settings saved', 'success');
+                await loadSettings();
+            } catch (error) {
+                console.error('Error saving changelog settings:', error);
+                showToast(error.message, 'error');
             } finally {
                 hideLoading();
             }
@@ -1029,7 +916,7 @@
 
         function logout() {
             localStorage.removeItem('token');
-            window.location.href = '/admin';
+            window.location.href = '/login';
         }
 
         // Utility functions

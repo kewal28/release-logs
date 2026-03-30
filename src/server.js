@@ -10,8 +10,11 @@ const { testConnection, initializeDatabase } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
+const publicScopedRoutes = require('./routes/publicScoped');
 const settingsRoutes = require('./routes/settings');
 const emailService = require('./services/emailService');
+const fileStorage = require('./services/fileStorage');
+const cache = require('./services/cache');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -91,6 +94,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD
 
 // Static file serving for JavaScript files
 app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 
 // API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
@@ -102,31 +106,37 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/p/:projectKey', publicScopedRoutes);
 app.use('/api', publicRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+app.get('/health', async (req, res) => {
+  const redis = await cache.ping();
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
+    redis: cache.isRedisEnabled() ? redis : 'disabled'
   });
 });
 
-// Admin panel HTML
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'admin.html'));
-});
+const sendView = (file) => (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', file));
+};
 
-// Settings page HTML
-app.get('/admin/settings', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'settings.html'));
-});
+app.get('/', sendView('landing.html'));
+app.get('/pricing', sendView('pricing.html'));
+app.get('/faq', sendView('faq.html'));
+app.get('/documentation', sendView('documentation.html'));
+app.get('/login', sendView('login.html'));
+app.get('/signup', sendView('signup.html'));
+app.get('/verify-email', sendView('verify-email.html'));
+app.get('/changelog', sendView('changelog.html'));
+app.get('/dashboard', sendView('dashboard.html'));
+app.get('/dashboard/settings', sendView('settings.html'));
 
-// Public site HTML
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'public.html'));
-});
+app.get('/admin', (req, res) => res.redirect(302, '/dashboard'));
+app.get('/admin/settings', (req, res) => res.redirect(302, '/dashboard/settings'));
 
 // Details page HTML
 app.get('/details/:id', (req, res) => {
@@ -153,15 +163,15 @@ async function startServer() {
     // Initialize database tables and default data
     await initializeDatabase();
     
-    // Initialize email service
     await emailService.initialize();
-    
+    await fileStorage.initializeS3();
+
     app.listen(PORT, () => {
+      const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
       console.log(`🚀 Release Log server running on port ${PORT}`);
-        const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
-  console.log(`📚 API Documentation: ${baseUrl}/api-docs`);
-  console.log(`👨‍💼 Admin Panel: ${baseUrl}/admin`);
-  console.log(`🌐 Public Site: ${baseUrl}`);
+      console.log(`📚 API Documentation: ${baseUrl}/api-docs`);
+      console.log(`📊 Dashboard: ${baseUrl}/dashboard`);
+      console.log(`🌐 Changelog: ${baseUrl}/changelog`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
