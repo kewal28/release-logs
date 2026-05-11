@@ -127,26 +127,58 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <h1 class="text-xl font-semibold text-gray-900">Settings</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="/dashboard" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to dashboard
-                    </a>
-                    <button id="logout-btn" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                    </button>
-                </div>
+    <div class="min-h-screen flex bg-gray-100">
+        <!-- Left sidebar -->
+        <aside class="w-56 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+            <div class="h-14 px-4 flex items-center border-b border-gray-200">
+                <span class="font-semibold text-gray-900">Release Log</span>
             </div>
-        </div>
-    </nav>
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <a href="/dashboard" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-chart-pie w-5 text-center text-gray-500"></i> Dashboard
+                </a>
+                <a href="/dashboard#changelogs" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-list-alt w-5 text-center text-gray-500"></i> Release log
+                </a>
+                <a href="/dashboard#comments" class="admin-only w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-comments w-5 text-center text-gray-500"></i> Comments
+                </a>
+                <a href="/dashboard#users" class="admin-only w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-users w-5 text-center text-gray-500"></i> Users
+                </a>
+                <a href="/dashboard#projects" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-folder w-5 text-center text-gray-500"></i> Projects
+                </a>
+                <a href="/dashboard/settings" class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-50">
+                    <i class="fas fa-cog w-5 text-center text-indigo-600"></i> Settings
+                </a>
+            </nav>
+        </aside>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex-1 flex flex-col min-w-0">
+            <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 gap-4 flex-shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <label for="projectSelect" class="text-sm text-gray-600 whitespace-nowrap hidden sm:inline">Project</label>
+                    <select id="projectSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-sm max-w-[220px] sm:max-w-xs truncate"></select>
+                </div>
+                <div class="relative">
+                    <button type="button" id="profileMenuBtn" class="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700">
+                        <span id="currentUser" class="truncate max-w-[140px] sm:max-w-xs"></span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                    </button>
+                    <div id="profileMenu" class="hidden absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                        <button type="button" id="profileChangePasswordBtn" class="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-key mr-2 text-gray-400"></i> Password
+                        </button>
+                        <button type="button" id="profileLogoutBtn" class="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div class="max-w-7xl mx-auto">
         <!-- Settings Tabs -->
         <div class="mb-8">
             <nav class="flex space-x-8" aria-label="Tabs">
@@ -156,11 +188,11 @@
                 <button id="tab-appearance" class="tab-button px-3 py-2 font-medium text-sm rounded-md" data-tab="appearance">
                     <i class="fas fa-palette mr-2"></i>Appearance
                 </button>
-                <button id="tab-env" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="env">
-                    <i class="fas fa-server mr-2"></i>Email &amp; storage (env)
-                </button>
                 <button id="tab-notifications" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="notifications">
                     <i class="fas fa-bell mr-2"></i>Notifications
+                </button>
+                <button id="tab-storage" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="storage">
+                    <i class="fas fa-database mr-2"></i>Storage
                 </button>
                 <button id="tab-changelog" class="tab-button px-3 py-2 font-medium text-sm rounded-md admin-only" data-tab="changelog">
                     <i class="fas fa-file-alt mr-2"></i>Changelog &amp; public
@@ -237,41 +269,24 @@
             </div>
         </div>
 
-        <!-- Email & object storage (environment variables only) -->
-        <div id="env-tab" class="tab-content hidden">
-            <div class="bg-white shadow rounded-lg p-6 space-y-6">
-                <div>
-                    <h2 class="text-lg font-medium text-gray-900">Email &amp; file storage</h2>
-                    <p class="text-sm text-gray-600 mt-2">
-                        SMTP and S3 are configured only via server environment variables (see <code class="text-xs bg-gray-100 px-1 rounded">env.example</code> in the repository).
-                        They are not stored in the database and cannot be edited from this UI.
-                    </p>
-                </div>
-
-                <div class="border border-gray-200 rounded-lg p-4">
-                    <h3 class="text-sm font-semibold text-gray-900 mb-3">SMTP (from env)</h3>
-                    <div id="smtp-status" class="text-sm mb-4"></div>
-                    <dl id="env-smtp-dl" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"></dl>
-                    <div class="mt-4">
+        <!-- Notifications Settings Tab -->
+        <div id="notifications-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-6">Notification Settings</h2>
+                <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-2">SMTP (from env)</h3>
+                    <div id="smtp-status" class="text-sm"></div>
+                    <div id="smtp-actions" class="mt-4 hidden">
                         <button type="button" id="test-smtp-btn" class="btn-secondary">
                             <i class="fas fa-paper-plane mr-2"></i>Send test email
                         </button>
                     </div>
                 </div>
 
-                <div class="border border-gray-200 rounded-lg p-4">
-                    <h3 class="text-sm font-semibold text-gray-900 mb-3">S3 / object storage (from env)</h3>
-                    <dl id="env-s3-dl" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"></dl>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notifications Settings Tab -->
-        <div id="notifications-tab" class="tab-content hidden">
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-6">Notification Settings</h2>
-                
                 <form id="notifications-form" class="space-y-6">
+                    <div id="smtp-required-note" class="hidden text-sm text-gray-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        Enable SMTP in the server environment to use email notifications.
+                    </div>
                     <div class="flex items-center">
                         <input type="checkbox" id="comment-notifications" name="comment_notifications" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                         <label for="comment-notifications" class="ml-2 block text-sm text-gray-900">Send email notifications for new comments</label>
@@ -297,31 +312,35 @@
             </div>
         </div>
 
+        <!-- Storage Settings Tab -->
+        <div id="storage-tab" class="tab-content hidden">
+            <div class="bg-white shadow rounded-lg p-6 space-y-6">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900">Object storage (S3)</h2>
+                    <p class="text-sm text-gray-600 mt-2">
+                        S3 is configured only via server environment variables. If not enabled, uploads use local storage.
+                    </p>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div id="s3-status" class="text-sm mb-3"></div>
+                    <dl id="env-s3-dl" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"></dl>
+                    <div id="s3-actions" class="mt-4 hidden">
+                        <button type="button" id="test-s3-btn" class="btn-secondary">
+                            <i class="fas fa-plug mr-2"></i>Test connection
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Changelog & public settings -->
         <div id="changelog-tab" class="tab-content hidden">
             <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-2">Changelog uploads &amp; public display</h2>
-                <p class="text-sm text-gray-600 mb-6">These values apply to admin image uploads. <code class="text-xs bg-gray-100 px-1 rounded">MAX_FILE_SIZE</code> and <code class="text-xs bg-gray-100 px-1 rounded">ALLOWED_IMAGE_TYPES</code> in the environment still override when set.</p>
+                <h2 class="text-lg font-medium text-gray-900 mb-2">Public display</h2>
+                <p class="text-sm text-gray-600 mb-6">Upload limits and allowed image types are configured via server environment only.</p>
 
                 <form id="changelog-form" class="space-y-6">
-                    <div>
-                        <label for="changelog-max-bytes" class="block text-sm font-medium text-gray-700">Max image size (bytes)</label>
-                        <input type="number" id="changelog-max-bytes" name="changelog_max_image_size_bytes" min="1024" step="1" required
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <p class="mt-1 text-sm text-gray-500">Default 5242880 (5&nbsp;MB).</p>
-                    </div>
-                    <div>
-                        <label for="changelog-max-images" class="block text-sm font-medium text-gray-700">Max images per changelog</label>
-                        <input type="number" id="changelog-max-images" name="changelog_max_images_per_entry" min="1" max="50" required
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label for="changelog-allowed-types" class="block text-sm font-medium text-gray-700">Allowed extensions</label>
-                        <input type="text" id="changelog-allowed-types" name="changelog_allowed_image_types" required
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                               placeholder="jpg,jpeg,png,gif,webp">
-                        <p class="mt-1 text-sm text-gray-500">Comma-separated, no dots.</p>
-                    </div>
                     <div class="flex items-center">
                         <input type="checkbox" id="show-changelog-author" name="show_changelog_author_username"
                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
@@ -334,6 +353,9 @@
                     </div>
                 </form>
             </div>
+        </div>
+                </div>
+            </main>
         </div>
     </div>
 
@@ -363,15 +385,51 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-lg font-medium text-gray-900">Change password</h3>
+                <button type="button" id="closeChangePasswordModal" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm" class="space-y-4">
+                    <div>
+                        <label for="currentPassword" class="block text-sm font-medium text-gray-700">Current password</label>
+                        <input type="password" id="currentPassword" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="newPassword" class="block text-sm font-medium text-gray-700">New password</label>
+                        <input type="password" id="newPassword" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm new password</label>
+                        <input type="password" id="confirmPassword" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div id="changePasswordError" class="hidden text-sm text-red-600"></div>
+                    <div class="modal-footer">
+                        <button type="button" id="cancelChangePasswordBtn" class="btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-primary">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentSettings = {};
         let themes = [];
         let timezones = [];
 
+        let emailStatus = { configured: false };
+
         // Initialize settings page
         document.addEventListener('DOMContentLoaded', async function() {
             await loadSettings();
             setupEventListeners();
+            await loadUserAndProjects();
             
             // Check user role and show/hide admin-only elements
             const token = localStorage.getItem('token');
@@ -396,18 +454,49 @@
             }
             
             // Add event listeners for removed inline handlers
-            document.getElementById('logout-btn').addEventListener('click', logout);
             document.getElementById('upload-logo-btn').addEventListener('click', uploadLogo);
             document.getElementById('test-smtp-btn').addEventListener('click', testSMTP);
             document.getElementById('close-modal-btn').addEventListener('click', function() { closeModal('test-smtp-modal'); });
             document.getElementById('cancel-modal-btn').addEventListener('click', function() { closeModal('test-smtp-modal'); });
             document.getElementById('send-test-email-btn').addEventListener('click', sendTestEmail);
+            document.getElementById('test-s3-btn').addEventListener('click', testS3);
             // Theme selection (event delegation)
             document.getElementById('theme-options').addEventListener('click', function(e) {
-                if (e.target.classList.contains('theme-preview')) {
-                    const themeValue = themes.find(t => t.color === e.target.style.backgroundColor)?.value;
-                    if (themeValue) selectTheme(themeValue);
-                }
+                const t = e.target.closest('.theme-preview');
+                if (t && t.dataset.theme) selectTheme(t.dataset.theme);
+            });
+
+            function closeProfileMenu() {
+                const m = document.getElementById('profileMenu');
+                if (m) m.classList.add('hidden');
+            }
+            function toggleProfileMenu() {
+                const m = document.getElementById('profileMenu');
+                if (!m) return;
+                m.classList.toggle('hidden');
+            }
+            document.getElementById('profileMenuBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleProfileMenu();
+            });
+            document.getElementById('profileChangePasswordBtn').addEventListener('click', () => {
+                closeProfileMenu();
+                showChangePasswordModal();
+            });
+            document.getElementById('profileLogoutBtn').addEventListener('click', () => {
+                closeProfileMenu();
+                logout();
+            });
+            document.addEventListener('click', closeProfileMenu);
+
+            document.getElementById('closeChangePasswordModal').addEventListener('click', hideChangePasswordModal);
+            document.getElementById('cancelChangePasswordBtn').addEventListener('click', hideChangePasswordModal);
+            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await changePassword();
+            });
+            document.getElementById('projectSelect').addEventListener('change', () => {
+                localStorage.setItem('currentProjectId', document.getElementById('projectSelect').value);
             });
         });
 
@@ -432,9 +521,10 @@
                 currentSettings = data.config;
                 themes = data.themes;
                 timezones = data.timezones;
+                emailStatus = data.emailStatus || { configured: false };
 
                 populateSettings();
-                updateSMTPStatus(data.emailStatus);
+                updateSMTPStatus(emailStatus);
                 hideLoading();
             } catch (error) {
                 console.error('Error loading settings:', error);
@@ -490,6 +580,7 @@
             document.getElementById('timezone').value = currentSettings.appearance?.timezone || 'UTC';
 
             populateEnvReadouts();
+            updateS3Status();
 
             // Notification settings
             document.getElementById('comment-notifications').checked = currentSettings.notifications?.comments !== false;
@@ -497,9 +588,6 @@
             toggleNotificationFields();
 
             const ch = currentSettings.changelog || {};
-            document.getElementById('changelog-max-bytes').value = ch.maxImageSizeBytes ?? 5242880;
-            document.getElementById('changelog-max-images').value = ch.maxImagesPerEntry ?? 10;
-            document.getElementById('changelog-allowed-types').value = ch.allowedImageTypes || 'jpg,jpeg,png,gif,webp';
             document.getElementById('show-changelog-author').checked = !!ch.showAuthorUsername;
         }
 
@@ -514,6 +602,7 @@
                 const preview = document.createElement('div');
                 preview.className = 'theme-preview mx-auto mb-2';
                 preview.style.backgroundColor = theme.color;
+                preview.dataset.theme = theme.value;
                 
                 const label = document.createElement('div');
                 label.className = 'text-sm text-gray-700';
@@ -547,7 +636,7 @@
             });
 
             // Add active class to selected theme
-            const selectedPreview = document.querySelector(`[onclick="selectTheme('${themeValue}')"]`);
+            const selectedPreview = document.querySelector(`.theme-preview[data-theme="${themeValue}"]`);
             if (selectedPreview) {
                 selectedPreview.classList.add('active');
             }
@@ -599,16 +688,6 @@
         }
 
         function populateEnvReadouts() {
-            const sm = currentSettings.smtp || {};
-            renderEnvDl('env-smtp-dl', [
-                ['Enabled', sm.enabled ? 'yes' : 'no'],
-                ['Host', sm.host],
-                ['Port', sm.port],
-                ['User', sm.user],
-                ['Password', sm.pass || '—'],
-                ['From', sm.from],
-                ['Secure (TLS)', sm.secure ? 'yes' : 'no']
-            ]);
             const s3 = currentSettings.s3 || {};
             renderEnvDl('env-s3-dl', [
                 ['Enabled', s3.enabled ? 'yes' : 'no'],
@@ -633,10 +712,127 @@
 
         function updateSMTPStatus(status) {
             const statusDiv = document.getElementById('smtp-status');
+            const smtpActions = document.getElementById('smtp-actions');
+            const note = document.getElementById('smtp-required-note');
+            const form = document.getElementById('notifications-form');
             if (status.configured) {
                 statusDiv.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2"></i>SMTP configured and ready';
+                smtpActions.classList.remove('hidden');
+                note.classList.add('hidden');
+                form.querySelectorAll('input,button,select,textarea').forEach((el) => (el.disabled = false));
             } else {
                 statusDiv.innerHTML = '<i class="fas fa-exclamation-circle text-yellow-500 mr-2"></i>SMTP not configured';
+                smtpActions.classList.add('hidden');
+                note.classList.remove('hidden');
+                document.getElementById('comment-notifications').checked = false;
+                toggleNotificationFields();
+                // keep Save enabled so the user can still turn it off, but disable content fields
+                form.querySelectorAll('#admin-email').forEach((el) => (el.disabled = true));
+            }
+        }
+
+        function updateS3Status() {
+            const s3 = currentSettings.s3 || {};
+            const statusDiv = document.getElementById('s3-status');
+            const actions = document.getElementById('s3-actions');
+            if (s3.enabled) {
+                statusDiv.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2"></i>S3 enabled';
+                actions.classList.remove('hidden');
+            } else {
+                statusDiv.innerHTML = '<i class="fas fa-info-circle text-gray-400 mr-2"></i>Using local storage (S3 disabled)';
+                actions.classList.add('hidden');
+            }
+        }
+
+        async function loadUserAndProjects() {
+            try {
+                const meRes = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+                const me = await meRes.json();
+                if (!meRes.ok || !me.user) throw new Error('Unauthorized');
+                document.getElementById('currentUser').textContent = me.user.username || '';
+
+                const prRes = await fetch('/api/admin/projects', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+                const pr = await prRes.json();
+                const list = pr.projects || [];
+                const sel = document.getElementById('projectSelect');
+                sel.innerHTML = list.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+                if (list.length) {
+                    const saved = localStorage.getItem('currentProjectId');
+                    let pid = list[0].id;
+                    if (saved && list.some((p) => String(p.id) === saved)) pid = parseInt(saved, 10);
+                    sel.value = String(pid);
+                    localStorage.setItem('currentProjectId', String(pid));
+                }
+            } catch (e) {
+                window.location.href = '/login';
+            }
+        }
+
+        function showChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.remove('hidden');
+            document.getElementById('changePasswordForm').reset();
+            document.getElementById('changePasswordError').classList.add('hidden');
+        }
+
+        function hideChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.add('hidden');
+        }
+
+        function showChangePasswordError(message) {
+            const el = document.getElementById('changePasswordError');
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        async function changePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            document.getElementById('changePasswordError').classList.add('hidden');
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showChangePasswordError('All fields are required');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showChangePasswordError('New password must be at least 6 characters long');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showChangePasswordError('New passwords do not match');
+                return;
+            }
+            try {
+                const response = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to change password');
+                showToast('Password changed', 'success');
+                hideChangePasswordModal();
+            } catch (e) {
+                showChangePasswordError(e.message);
+            }
+        }
+
+        async function testS3() {
+            try {
+                const response = await fetch('/api/settings/test-s3', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'S3 test failed');
+                showToast(data.message || 'S3 connection successful', 'success');
+            } catch (e) {
+                showToast(e.message, 'error');
             }
         }
 
@@ -809,9 +1005,6 @@
                 showLoading();
                 const formData = new FormData(e.target);
                 const data = {
-                    changelog_max_image_size_bytes: parseInt(formData.get('changelog_max_image_size_bytes'), 10),
-                    changelog_max_images_per_entry: parseInt(formData.get('changelog_max_images_per_entry'), 10),
-                    changelog_allowed_image_types: (formData.get('changelog_allowed_image_types') || '').trim(),
                     show_changelog_author_username: formData.get('show_changelog_author_username') === 'on'
                 };
                 const response = await fetch('/api/settings/changelog', {

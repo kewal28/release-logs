@@ -17,7 +17,6 @@ const slugify = (str) =>
     .replace(/^-+|-+$/g, '')
     .replace(/-+/g, '-');
 
-<<<<<<< Current (Your changes)
 async function createDatabaseIfNeeded() {
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
@@ -32,90 +31,6 @@ async function createDatabaseIfNeeded() {
   await conn.end();
   console.log(`📦 Database ready: ${dbName}`);
 }
-=======
-    const dbName = process.env.DB_NAME || 'release_log_db';
-    
-    // Create database if it doesn't exist
-    console.log(`📦 Creating database: ${dbName}`);
-    await connection.query(`CREATE DATABASE IF NOT EXISTS ${dbName}`);
-    await connection.query(`USE ${dbName}`);
-
-    // Create tables
-    console.log('📋 Creating tables...');
-    
-    // Users table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        is_admin BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Changelogs table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS changelogs (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        title VARCHAR(255) NOT NULL,
-        body TEXT NOT NULL,
-        label VARCHAR(64) NOT NULL DEFAULT 'feature',
-        status ENUM('draft', 'published') DEFAULT 'draft',
-        author_id INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        published_at TIMESTAMP NULL,
-        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Images table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS images (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        changelog_id INT NOT NULL,
-        filename VARCHAR(255) NOT NULL,
-        original_name VARCHAR(255) NOT NULL,
-        mime_type VARCHAR(100) NOT NULL,
-        size INT NOT NULL,
-        storage_type ENUM('local', 's3') DEFAULT 'local',
-        s3_key VARCHAR(500) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Votes table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS votes (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        changelog_id INT NOT NULL,
-        ip_address VARCHAR(45) NOT NULL,
-        vote_type ENUM('upvote', 'downvote') NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_vote (changelog_id, ip_address)
-      )
-    `);
-
-    // Comments table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        changelog_id INT NOT NULL,
-        author_name VARCHAR(100) NOT NULL,
-        author_email VARCHAR(100) NULL,
-        content TEXT NOT NULL,
-        ip_address VARCHAR(45) NOT NULL,
-        is_approved BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
-      )
-    `);
->>>>>>> Incoming (Background Agent changes)
 
 async function runSlugBackfill() {
   const { pool } = require(path.join(__dirname, '..', 'src', 'config', 'database'));

@@ -50,18 +50,14 @@
     </header>
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div id="projectKeyBanner" class="hidden mx-4 mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3">
+            Add your project public key to the URL, for example <code class="bg-amber-100 px-1 rounded">?projectKey=your_key</code>. If you have multiple projects, this key is required.
+        </div>
         <!-- Header -->
         <div class="px-4 py-6 sm:px-0">
             <div class="flex justify-between items-center">
                 <h2 id="latestUpdates" class="text-2xl font-bold text-gray-900">Latest Updates</h2>
-                <div class="flex space-x-2">
-                    <select id="labelFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-900">
-                        <option value="">All Types</option>
-                        <option value="feature">Features</option>
-                        <option value="bug">Bug Fixes</option>
-                        <option value="optimization">Optimizations</option>
-                    </select>
-                </div>
+                <div id="labelTabs" class="flex flex-wrap gap-2"></div>
             </div>
         </div>
 
@@ -97,62 +93,99 @@
         </div>
     </div>
 
-    <!-- Comment Modal -->
-    <div id="commentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Add Comment</h3>
-                    <button id="closeCommentModal" class="text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <form id="commentForm" class="space-y-4">
-                    <input type="hidden" id="commentChangelogId">
-                    
-                    <div>
-                        <label for="authorName" class="block text-sm font-medium text-gray-700">Name</label>
-                        <input type="text" id="authorName" name="author_name" required 
-                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-
-                    <div>
-                        <label for="authorEmail" class="block text-sm font-medium text-gray-700">Email (optional)</label>
-                        <input type="email" id="authorEmail" name="author_email" 
-                               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-
-                    <div>
-                        <label for="commentContent" class="block text-sm font-medium text-gray-700">Comment</label>
-                        <textarea id="commentContent" name="content" rows="4" required 
-                                  class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                    </div>
-
-                    <!-- Honeypot field -->
-                    <input type="text" name="_gotcha" style="display: none;" tabindex="-1" autocomplete="off">
-
-                    <div class="flex justify-end space-x-3 pt-4">
-                        <button type="button" id="cancelCommentBtn" 
-                                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Cancel
-                        </button>
-                        <button type="submit" id="submitCommentBtn" 
-                                class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
-                            Submit Comment
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Global variables
         let currentPage = 1;
         let totalPages = 1;
         let changelogs = [];
         let appSettings = {};
+        let labelCounts = {};
+        let activeLabel = '';
+        let activeCommentReplyParent = null;
+        const ID_COOKIE = 'rw_identity';
+
+        function getCookie(name) {
+            try {
+                const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '=([^;]*)'));
+                return m ? decodeURIComponent(m[1]) : '';
+            } catch (_) { return ''; }
+        }
+        function setCookie(name, value, maxAgeSeconds) {
+            const parts = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `Max-Age=${maxAgeSeconds || 31536000}`, 'SameSite=Lax'];
+            if (location.protocol === 'https:') parts.push('Secure');
+            document.cookie = parts.join('; ');
+        }
+        function delCookie(name) { setCookie(name, '', 0); }
+        function loadIdentity() {
+            const raw = getCookie(ID_COOKIE);
+            if (!raw) return { name: '', email: '', remember: false };
+            try {
+                const obj = JSON.parse(atob(raw));
+                return { name: String(obj.name || ''), email: String(obj.email || ''), remember: true };
+            } catch (_) {
+                return { name: '', email: '', remember: false };
+            }
+        }
+        function saveIdentity(name, email, remember) {
+            if (!remember) { delCookie(ID_COOKIE); return; }
+            const payload = btoa(JSON.stringify({ name: String(name || ''), email: String(email || '') }));
+            setCookie(ID_COOKIE, payload, 31536000);
+        }
+
+        function getProjectKey() {
+            // Clean URL: /p/:key
+            const pathMatch = window.location.pathname.match(/^\/p\/([^/?#]+)/);
+            if (pathMatch) {
+                const pk = decodeURIComponent(pathMatch[1]);
+                localStorage.setItem('releaseLogProjectKey', pk);
+                return pk;
+            }
+            const q = new URLSearchParams(window.location.search);
+            const pk = q.get('projectKey') || q.get('pk') || localStorage.getItem('releaseLogProjectKey');
+            if (pk) localStorage.setItem('releaseLogProjectKey', pk);
+            return pk || '';
+        }
+
+        // Hide the site nav when accessed via clean /p/:key URL (not our page)
+        if (/^\/p\/[^/?#]+/.test(window.location.pathname)) {
+            const hdr = document.getElementById('mainHeader');
+            if (hdr) hdr.style.display = 'none';
+        }
+
+        function changelogApiPrefix() {
+            const pk = getProjectKey();
+            return pk ? `/p/${encodeURIComponent(pk)}` : '';
+        }
+
+        function escapeCommentHtml(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br/>');
+        }
+
+        function nestCommentsFlat(flat) {
+            const list = Array.isArray(flat) ? flat.slice() : [];
+            const roots = list
+                .filter((c) => c.parent_id == null)
+                .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            const out = [];
+            function walk(node, depth) {
+                out.push({ ...node, depth });
+                const kids = list
+                    .filter((c) => Number(c.parent_id) === Number(node.id))
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                for (const k of kids) walk(k, depth + 1);
+            }
+            for (const r of roots) walk(r, 0);
+            return out;
+        }
+
+        function detailsQuerySuffix() {
+            const pk = getProjectKey();
+            return pk ? `?projectKey=${encodeURIComponent(pk)}` : '';
+        }
 
         // Load application settings
         async function loadAppSettings() {
@@ -228,9 +261,19 @@
 
         async function loadChangelogs() {
             try {
+                const banner = document.getElementById('projectKeyBanner');
+                if (banner) {
+                    if (!getProjectKey()) banner.classList.remove('hidden');
+                    else banner.classList.add('hidden');
+                }
                 Utils.UI.showLoading('loadingState', 'emptyState', 'changelogsContainer');
-                const label = document.getElementById('labelFilter').value;
-                const response = await Utils.Api.apiRequest(`/changelogs?page=${currentPage}&limit=10${label ? `&label=${label}` : ''}`);
+                const label = activeLabel;
+                const prefix = changelogApiPrefix();
+                const loc = new URLSearchParams(window.location.search).get('locale');
+                const locQ = loc ? `&locale=${encodeURIComponent(loc)}` : '';
+                const response = await Utils.Api.apiRequest(
+                    `${prefix}/changelogs?page=${currentPage}&limit=10${label ? `&label=${encodeURIComponent(label)}` : ''}${locQ}`
+                );
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelogs');
 
                 changelogs = data.changelogs;
@@ -249,6 +292,45 @@
             }
         }
 
+        async function loadLabelCounts() {
+            const prefix = changelogApiPrefix();
+            try {
+                const response = await Utils.Api.apiRequest(`${prefix}/changelogs/labels`);
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load labels');
+                labelCounts = data.counts || {};
+                const labels = Object.keys(labelCounts).filter((k) => (labelCounts[k] || 0) > 0);
+                const order = ['feature', 'bug', 'optimization'];
+                labels.sort((a, b) => {
+                    const ai = order.indexOf(a);
+                    const bi = order.indexOf(b);
+                    if (ai === -1 && bi === -1) return a.localeCompare(b);
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                });
+                if (!activeLabel) activeLabel = labels[0] || '';
+                renderLabelTabs(labels);
+            } catch (e) {
+                labelCounts = {};
+                renderLabelTabs([]);
+            }
+        }
+
+        function renderLabelTabs(labels) {
+            const el = document.getElementById('labelTabs');
+            if (!el) return;
+            const btnClass = (active) =>
+                active
+                    ? 'px-3 py-2 rounded-full text-sm font-semibold bg-indigo-600 text-white'
+                    : 'px-3 py-2 rounded-full text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50';
+            el.innerHTML = labels
+                .map(
+                    (l) =>
+                        `<button type="button" class="${btnClass(l === activeLabel)}" data-action="tab" data-label="${l}">${l}</button>`
+                )
+                .join('');
+        }
+
         function renderChangelogs() {
             const container = document.getElementById('changelogsContainer');
             const emptyState = document.getElementById('emptyState');
@@ -262,66 +344,50 @@
             container.classList.remove('hidden');
             emptyState.classList.add('hidden');
 
-            container.innerHTML = changelogs.map(changelog => `
-                <div class="release-card bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            container.innerHTML = changelogs
+                .map((changelog) => {
+                    const dateText = Utils.Date.formatDateWithFallback(
+                        changelog.release_date || changelog.published_at,
+                        changelog.created_at
+                    );
+                    const summary = String(changelog.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+                    return `
+                <div class="release-card bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden" data-changelog-id="${changelog.id}">
                     <div class="p-6">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex-1 min-w-0">
                                 <div class="flex items-center space-x-3 mb-2">
-                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                        <a href="/details/${changelog.slug}" class="release-link hover:text-indigo-600 hover:underline cursor-pointer">${changelog.title}</a>
-                                    </h3>
+                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white truncate">${changelog.title}</h3>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${Utils.Label.getLabelColor(changelog.label)}">
                                         <i class="${Utils.Label.getLabelIcon(changelog.label)} mr-1"></i>
                                         ${changelog.label}
                                     </span>
                                 </div>
-                                
-                                <div class="prose max-w-none text-gray-700 dark:text-gray-200 mb-4">
-                                    ${changelog.body}
-                                </div>
-
-                                ${changelog.images && changelog.images.length > 0 ? `
-                                    <div class="mb-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            ${changelog.images.map(image => `
-                                                <a href="${image.url}" target="_blank" rel="noopener noreferrer">
-                                                    <img src="${image.url}" alt="Billing Pie - ${changelog.title}" 
-                                                        class="w-full object-cover rounded-lg shadow-sm" style="width:100%">
-                                                </a>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : ''}
-
-                                <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                                <p class="text-sm text-gray-600 dark:text-gray-300">${summary}${summary.length >= 180 ? '…' : ''}</p>
+                                <div class="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                                     <div class="flex items-center space-x-4">
-                                        <span class="release-author">By ${changelog.author_name}</span>
-                                        <span class="release-date">${Utils.Date.formatDateWithFallback(changelog.release_date || changelog.published_at, changelog.created_at)}</span>
+                                        ${changelog.author_name ? `<span class="release-author">By ${changelog.author_name}</span>` : ''}
+                                        <span class="release-date">${dateText}</span>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <button class="vote-btn upvote-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-green-600" 
-                                                data-changelog-id="${changelog.id}" data-vote-type="upvote">
-                                            <i class="fas fa-thumbs-up"></i>
-                                            <span>${changelog.upvotes}</span>
+                                        <button class="vote-btn upvote-btn flex items-center space-x-1 hover:text-green-600" data-changelog-id="${changelog.id}" data-vote-type="upvote">
+                                            <i class="fas fa-thumbs-up"></i><span>${changelog.upvotes}</span>
                                         </button>
-                                        <button class="vote-btn downvote-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-red-600" 
-                                                data-changelog-id="${changelog.id}" data-vote-type="downvote">
-                                            <i class="fas fa-thumbs-down"></i>
-                                            <span>${changelog.downvotes}</span>
+                                        <button class="vote-btn downvote-btn flex items-center space-x-1 hover:text-red-600" data-changelog-id="${changelog.id}" data-vote-type="downvote">
+                                            <i class="fas fa-thumbs-down"></i><span>${changelog.downvotes}</span>
                                         </button>
-                                        <button class="comment-btn flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300" 
-                                                data-changelog-id="${changelog.id}">
-                                            <i class="fas fa-comment"></i>
-                                            <span>${changelog.comments}</span>
+                                        <button class="open-btn flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-indigo-600" data-action="open" data-changelog-id="${changelog.id}">
+                                            <span class="font-semibold">Open</span><i class="fas fa-chevron-right text-xs"></i>
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        <div class="details hidden mt-5 border-t border-gray-100 dark:border-gray-700 pt-5"></div>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+                })
+                .join('');
             
             // Add event delegation for button clicks
             addPublicEventListeners();
@@ -329,6 +395,22 @@
         
         function addPublicEventListeners() {
             const container = document.getElementById('changelogsContainer');
+            if (!container || container.dataset.delegationBound === '1') return;
+            container.dataset.delegationBound = '1';
+
+            const labelTabs = document.getElementById('labelTabs');
+            if (labelTabs && labelTabs.dataset.bound !== '1') {
+                labelTabs.dataset.bound = '1';
+                labelTabs.addEventListener('click', (e) => {
+                    const btn = e.target.closest('[data-action="tab"]');
+                    if (!btn) return;
+                    activeLabel = btn.dataset.label || '';
+                    currentPage = 1;
+                    renderLabelTabs(Object.keys(labelCounts).filter((k) => (labelCounts[k] || 0) > 0));
+                    loadChangelogs();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            }
             
             // Vote button clicks
             container.addEventListener('click', (e) => {
@@ -339,18 +421,13 @@
                     voteChangelog(changelogId, voteType);
                 }
             });
-            
-            // Comment button clicks
+
+            // Open / close details
             container.addEventListener('click', (e) => {
-                if (e.target.closest('.comment-btn')) {
-                    const btn = e.target.closest('.comment-btn');
+                const btn = e.target.closest('[data-action="open"]');
+                if (btn) {
                     const changelogId = parseInt(btn.dataset.changelogId);
-                    const changelog = changelogs.find(c => c.id === changelogId);
-                    if (changelog && changelog.slug) {
-                        window.location.href = `/details/${changelog.slug}`;
-                    } else {
-                        window.location.href = `/details/${changelogId}`;
-                    }
+                    toggleDetails(changelogId);
                 }
             });
         }
@@ -358,121 +435,201 @@
         // Voting functions
         async function voteChangelog(id, voteType) {
             try {
-                const response = await Utils.Api.apiRequest(`/changelogs/${id}/vote`, {
+                const prefix = changelogApiPrefix();
+                const response = await Utils.Api.apiRequest(`${prefix}/changelogs/${id}/vote`, {
                     method: 'POST',
                     body: JSON.stringify({ vote_type: voteType })
                 });
 
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to vote');
-
-                // Reload changelogs to update vote counts
-                loadChangelogs();
+                if (data && data.upvotes != null && data.downvotes != null) {
+                    const up = document.querySelector(`.upvote-btn[data-changelog-id="${id}"] span`);
+                    const down = document.querySelector(`.downvote-btn[data-changelog-id="${id}"] span`);
+                    if (up) up.textContent = data.upvotes;
+                    if (down) down.textContent = data.downvotes;
+                } else {
+                    loadChangelogs();
+                }
             } catch (error) {
                 console.error('Error voting:', error);
                 Utils.Toast.showError(error.message);
             }
         }
 
-        // Comment functions
-        function showCommentModal(changelogId) {
-            document.getElementById('commentChangelogId').value = changelogId;
-            document.getElementById('commentModal').classList.remove('hidden');
+        async function toggleDetails(changelogId) {
+            const card = document.querySelector(`.release-card[data-changelog-id="${changelogId}"]`);
+            const details = card ? card.querySelector('.details') : null;
+            if (!details) return;
+            if (!details.classList.contains('hidden')) {
+                details.classList.add('hidden');
+                details.innerHTML = '';
+                return;
+            }
+            details.classList.remove('hidden');
+            details.innerHTML = `<div class="text-sm text-gray-500">Loading…</div>`;
+            const prefix = changelogApiPrefix();
+            const loc = new URLSearchParams(window.location.search).get('locale');
+            const locQ = loc ? `?locale=${encodeURIComponent(loc)}` : '';
+            const response = await Utils.Api.apiRequest(`${prefix}/changelogs/${changelogId}${locQ}`);
+            const data = await Utils.Api.handleApiResponse(response, 'Failed to load details');
+            const c = data.changelog;
+            activeCommentReplyParent = null;
+            const nested = nestCommentsFlat(c.comments_list || []);
+            const comments = nested
+                .map((cm) => {
+                    const who = escapeCommentHtml(cm.author_name || 'Anonymous');
+                    const when = String(cm.created_at || '').slice(0, 10);
+                    const content = escapeCommentHtml(cm.content || '');
+                    const isAdmin = Number(cm.author_is_admin) === 1;
+                    const pad = cm.depth ? `margin-left:${Math.min(cm.depth, 4) * 14}px` : '';
+                    const adminBadge = isAdmin
+                        ? '<span class="text-[10px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Admin</span>'
+                        : '';
+                    const rowCls = isAdmin
+                        ? 'border-l-4 border-indigo-500 pl-3 bg-indigo-50/50 dark:bg-indigo-950/30'
+                        : '';
+                    return `<div class="py-3 border-b border-gray-100 dark:border-gray-700 ${rowCls}" style="${pad}">
+                    <div class="text-xs text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span class="font-semibold text-gray-900 dark:text-white">${who}</span>
+                        ${adminBadge}
+                        <span>· ${when}</span>
+                        <button type="button" class="reply-comment ml-auto text-indigo-600 dark:text-indigo-400 text-xs font-semibold" data-parent-id="${cm.id}">Reply</button>
+                    </div>
+                    <div class="text-sm text-gray-700 dark:text-gray-200 mt-1">${content}</div>
+                </div>`;
+                })
+                .join('');
+
+            const id = loadIdentity();
+            details.innerHTML = `
+                <div class="prose max-w-none text-gray-700 dark:text-gray-200">${c.body || ''}</div>
+                ${c.images && c.images.length ? `
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${c.images.map(img => `<a href="${img.url}" target="_blank" rel="noopener noreferrer"><img src="${img.url}" class="w-full object-cover rounded-lg shadow-sm"/></a>`).join('')}
+                    </div>
+                ` : ''}
+                <div class="mt-6">
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Comments</h4>
+                    <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div class="px-4">${comments || `<div class="py-4 text-sm text-gray-500">No comments yet.</div>`}</div>
+                        <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input type="text" class="identity-name border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Name (optional)" value="${id.name.replace(/"/g, '&quot;')}">
+                                <input type="email" class="identity-email border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Email (optional)" value="${id.email.replace(/"/g, '&quot;')}">
+                            </div>
+                            <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                                <input type="checkbox" class="identity-remember h-4 w-4" ${id.remember ? 'checked' : ''}> Use for future
+                            </label>
+                            <p class="comment-reply-hint mt-2 text-xs text-indigo-600 dark:text-indigo-300 hidden"></p>
+                            <textarea class="comment-content mt-3 w-full border border-gray-300 rounded-md px-3 py-2 text-sm" rows="3" placeholder="Write a comment…"></textarea>
+                            <div class="mt-3 flex justify-end">
+                                <button type="button" class="send-comment px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-semibold hover:bg-indigo-700" data-changelog-id="${c.id}">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        function hideCommentModal() {
-            document.getElementById('commentModal').classList.add('hidden');
-            document.getElementById('commentForm').reset();
-        }
-
-        async function submitComment(commentData) {
-            const changelogId = document.getElementById('commentChangelogId').value;
+        async function submitInlineComment(cardEl, changelogId) {
+            const prefix = changelogApiPrefix();
+            const name = (cardEl.querySelector('.identity-name')?.value || '').trim();
+            const email = (cardEl.querySelector('.identity-email')?.value || '').trim();
+            const remember = !!cardEl.querySelector('.identity-remember')?.checked;
+            const content = (cardEl.querySelector('.comment-content')?.value || '').trim();
+            if (!content) return;
 
             try {
-                const response = await apiRequest(`/changelogs/${changelogId}/comments`, {
+                saveIdentity(name, email, remember);
+                const commentData = { content, _gotcha: '' };
+                if (name) commentData.author_name = name;
+                if (email) commentData.author_email = email;
+                if (activeCommentReplyParent) commentData.parent_id = activeCommentReplyParent;
+                const response = await Utils.Api.apiRequest(`${prefix}/changelogs/${changelogId}/comments`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(commentData)
                 });
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to submit comment');
 
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to submit comment');
+                if (data.message) Utils.Toast.showSuccess(data.message);
+                activeCommentReplyParent = null;
+                const hintEl = cardEl.querySelector('.comment-reply-hint');
+                if (hintEl) {
+                    hintEl.classList.add('hidden');
+                    hintEl.textContent = '';
                 }
-
-                hideCommentModal();
-                loadChangelogs(); // Reload to show new comment count
-                alert(data.message);
+                // Reload just this details panel
+                toggleDetails(changelogId);
+                toggleDetails(changelogId);
             } catch (error) {
                 console.error('Error submitting comment:', error);
-                showError(error.message);
+                Utils.Toast.showError(error.message);
             }
         }
 
         // Event listeners
-        document.getElementById('labelFilter').addEventListener('change', () => {
-            currentPage = 1;
-            loadChangelogs();
-        });
-
-        document.getElementById('closeCommentModal').addEventListener('click', hideCommentModal);
-        document.getElementById('cancelCommentBtn').addEventListener('click', hideCommentModal);
-
-        document.getElementById('commentForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Gather form data as JSON
-            const commentData = {
-                author_name: document.getElementById('authorName').value,
-                author_email: document.getElementById('authorEmail').value,
-                content: document.getElementById('commentContent').value,
-                _gotcha: document.querySelector('input[name="_gotcha"]').value
-            };
-            submitComment(commentData);
+        document.addEventListener('click', (e) => {
+            const replyBtn = e.target.closest('.reply-comment');
+            if (replyBtn) {
+                activeCommentReplyParent = parseInt(replyBtn.getAttribute('data-parent-id'), 10);
+                const card = replyBtn.closest('.release-card');
+                const hint = card && card.querySelector('.comment-reply-hint');
+                if (hint) {
+                    hint.textContent = 'Replying to a comment — your message will thread below.';
+                    hint.classList.remove('hidden');
+                }
+                return;
+            }
+            const btn = e.target.closest('.send-comment');
+            if (!btn) return;
+            const changelogId = parseInt(btn.dataset.changelogId);
+            const card = btn.closest('.release-card');
+            submitInlineComment(card, changelogId);
         });
 
         // Load changelogs on page load
         window.addEventListener('load', async () => {
+            addPublicEventListeners();
             await loadAppSettings();
+            await loadLabelCounts();
             loadChangelogs();
         });
 
         // Theme toggle logic
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
-        const themeText = themeToggle.querySelector('span');
-        const mainHeader = document.getElementById('mainHeader');
-        const latestUpdates = document.getElementById('latestUpdates');
-        const labelFilter = document.getElementById('labelFilter');
+        if (themeToggle && themeIcon) {
+            const themeText = themeToggle.querySelector('span');
 
-        function updateThemeButton() {
-            const isDark = document.documentElement.classList.contains('dark');
-            if (isDark) {
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
-                themeText.textContent = 'Light Mode';
-            } else {
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
-                themeText.textContent = 'Dark Mode';
+            function updateThemeButton() {
+                const isDark = document.documentElement.classList.contains('dark');
+                if (isDark) {
+                    themeIcon.classList.remove('fa-moon');
+                    themeIcon.classList.add('fa-sun');
+                    if (themeText) themeText.textContent = 'Light Mode';
+                } else {
+                    themeIcon.classList.remove('fa-sun');
+                    themeIcon.classList.add('fa-moon');
+                    if (themeText) themeText.textContent = 'Dark Mode';
+                }
             }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                updateThemeButton();
+            });
+
+            themeToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.contains('dark');
+                if (isDark) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                }
+                updateThemeButton();
+            });
         }
-
-        // On load, set button state
-        document.addEventListener('DOMContentLoaded', () => {
-            updateThemeButton();
-        });
-
-        themeToggle.addEventListener('click', () => {
-            const isDark = document.documentElement.classList.contains('dark');
-            if (isDark) {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-            }
-            updateThemeButton();
-        });
     </script>
 </body>
 </html> 

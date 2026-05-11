@@ -8,7 +8,8 @@ const {
   getChangelogDetail,
   postVote,
   postComment,
-  getComments
+  getComments,
+  labelCounts
 } = require('./changelogPublicShared');
 
 const router = express.Router();
@@ -64,6 +65,13 @@ router.get('/changelogs', async (req, res) => {
   return listChangelogs(req, res, projectId);
 });
 
+/** @deprecated Prefer /api/p/{projectKey}/changelogs/labels */
+router.get('/changelogs/labels', async (req, res) => {
+  const projectId = await resolveLegacyProject(req, res);
+  if (projectId == null) return;
+  return labelCounts(req, res, projectId);
+});
+
 /** @deprecated Prefer /api/p/{projectKey}/changelogs/:id */
 router.get('/changelogs/:id', async (req, res) => {
   const projectId = await resolveLegacyProject(req, res);
@@ -87,11 +95,9 @@ router.post(
   '/changelogs/:id/comments',
   commentRateLimit,
   [
-    body('author_name')
-      .trim()
-      .isLength({ min: 1, max: 100 })
-      .withMessage('Author name is required and must be less than 100 characters'),
-    body('author_email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+    body('author_name').optional().trim().isLength({ max: 100 }).withMessage('Author name must be less than 100 characters'),
+    body('author_email').optional().isEmail().normalizeEmail().withMessage('Author email must be a valid email address'),
+    body('parent_id').optional().isInt({ min: 1 }).toInt(),
     body('content')
       .trim()
       .isLength({ min: 1, max: 1000 })

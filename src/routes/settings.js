@@ -5,6 +5,7 @@ const { authenticateUser, requireAdmin, requireVerifiedEmail } = require('../mid
 const settingsService = require('../services/settings');
 const emailService = require('../services/emailService');
 const fileStorage = require('../services/fileStorage');
+const { HeadBucketCommand } = require('@aws-sdk/client-s3');
 
 const router = express.Router();
 
@@ -436,6 +437,46 @@ router.post('/test-smtp', requireAdmin, [
   } catch (error) {
     console.error('Error testing SMTP:', error);
     res.status(500).json({ error: 'SMTP test failed' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/test-s3:
+ *   post:
+ *     summary: Test S3 connection
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: S3 test successful
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/test-s3', requireAdmin, async (req, res) => {
+  try {
+    const s3cfg = settingsService.getS3FromEnv();
+    if (!s3cfg.enabled) {
+      return res.status(400).json({ error: 'S3 is not enabled' });
+    }
+    const validation = settingsService.validateS3Settings(s3cfg);
+    if (!validation.isValid) {
+      return res.status(400).json({ error: validation.errors.join(', ') });
+    }
+
+    await fileStorage.initializeS3();
+    if (!fileStorage.s3 || !fileStorage.s3Bucket) {
+      return res.status(400).json({ error: 'S3 is not properly configured' });
+    }
+
+    await fileStorage.s3.send(new HeadBucketCommand({ Bucket: fileStorage.s3Bucket }));
+    res.json({ message: 'S3 connection successful' });
+  } catch (error) {
+    console.error('Error testing S3:', error);
+    res.status(500).json({ error: 'S3 test failed' });
   }
 });
 

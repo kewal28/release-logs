@@ -59,7 +59,7 @@ async function listChangelogs(req, res, projectId) {
        FROM changelogs c
        LEFT JOIN users u ON c.author_id = u.id
        ${whereClause}
-       ORDER BY c.published_at DESC
+       ORDER BY COALESCE(c.release_date, DATE(c.published_at), DATE(c.created_at)) DESC, c.published_at DESC
        LIMIT ? OFFSET ?`,
       [...params, parseInt(limit, 10), offset]
     );
@@ -137,7 +137,12 @@ async function getChangelogDetail(req, res, projectId) {
     }));
 
     const [comments] = await pool.execute(
-      'SELECT id, author_name, content, created_at FROM comments WHERE changelog_id = ? AND is_approved = 1 ORDER BY created_at DESC',
+      `SELECT c.id, c.parent_id, c.user_id, c.author_name, c.content, c.created_at,
+              COALESCE(u.is_admin, 0) AS author_is_admin
+       FROM comments c
+       LEFT JOIN users u ON c.user_id = u.id
+       WHERE c.changelog_id = ? AND c.is_approved = 1
+       ORDER BY c.created_at ASC`,
       [cid]
     );
     changelog.comments_list = comments;
@@ -231,7 +236,7 @@ async function postComment(req, res, projectId) {
     }
 
     const { id } = req.params;
-    const { author_name, author_email, content } = req.body;
+    const { author_name, author_email, content, parent_id: parentIdRaw } = req.body;
     const ipAddress = req.ip;
 
     const [changelogs] = await pool.execute(
@@ -241,6 +246,22 @@ async function postComment(req, res, projectId) {
 
     if (changelogs.length === 0) {
       return res.status(404).json({ error: 'Changelog not found' });
+    }
+
+    const changelogNumericId = changelogs[0].id;
+    let parentId = null;
+    if (parentIdRaw != null && parentIdRaw !== '') {
+      parentId = parseInt(parentIdRaw, 10);
+      if (!Number.isFinite(parentId)) {
+        return res.status(400).json({ error: 'Invalid parent_id' });
+      }
+      const [parents] = await pool.execute(
+        'SELECT id FROM comments WHERE id = ? AND changelog_id = ?',
+        [parentId, changelogNumericId]
+      );
+      if (parents.length === 0) {
+        return res.status(400).json({ error: 'Invalid parent comment' });
+      }
     }
 
     const maxCommentsPerIp = parseInt(process.env.MAX_COMMENTS_PER_IP, 10) || 10;
@@ -253,26 +274,31 @@ async function postComment(req, res, projectId) {
       return res.status(429).json({ error: 'Too many comments from this IP address' });
     }
 
+    const safeAuthorNameRaw = String(author_name || '').trim() || 'Anonymous';
+    const safeAuthorEmailRaw = String(author_email || '').trim();
     const filteredContent = filter.clean(content);
-    const filteredAuthorName = filter.clean(author_name);
-    const isProfane = filteredContent !== content || filteredAuthorName !== author_name;
+    const filteredAuthorName = filter.clean(safeAuthorNameRaw);
+    const isProfane = filteredContent !== content || filteredAuthorName !== safeAuthorNameRaw;
     const isApproved = commentApprovalInitial(isProfane);
 
     const [result] = await pool.execute(
-      'INSERT INTO comments (changelog_id, author_name, author_email, content, ip_address, is_approved) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, filteredAuthorName, author_email || null, filteredContent, ipAddress, isApproved]
+      `INSERT INTO comments (changelog_id, parent_id, user_id, author_name, author_email, content, ip_address, is_approved)
+       VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
+      [changelogNumericId, parentId, filteredAuthorName, safeAuthorEmailRaw || null, filteredContent, ipAddress, isApproved]
     );
 
     try {
       const config = await settingsService.getAppConfig();
       if (config.notifications.comments && emailService.isConfigured) {
-        const [changelogRows] = await pool.execute('SELECT id, title FROM changelogs WHERE id = ?', [id]);
+        const [changelogRows] = await pool.execute('SELECT id, title FROM changelogs WHERE id = ?', [
+          changelogNumericId
+        ]);
         if (changelogRows.length > 0) {
           await emailService.sendCommentNotification(
             {
               id: result.insertId,
               author_name: filteredAuthorName,
-              author_email: author_email || null,
+              author_email: safeAuthorEmailRaw || null,
               content: filteredContent,
               created_at: new Date()
             },
@@ -288,9 +314,11 @@ async function postComment(req, res, projectId) {
       message: isApproved ? 'Comment added successfully' : 'Comment submitted for review',
       comment: {
         id: result.insertId,
+        parent_id: parentId,
         author_name: filteredAuthorName,
         content: filteredContent,
         is_approved: isApproved,
+        author_is_admin: 0,
         created_at: new Date()
       }
     });
@@ -331,7 +359,13 @@ async function getComments(req, res, projectId) {
     const total = countResult[0].total;
 
     const [comments] = await pool.execute(
-      'SELECT id, author_name, content, created_at FROM comments WHERE changelog_id = ? AND is_approved = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      `SELECT c.id, c.parent_id, c.user_id, c.author_name, c.content, c.created_at,
+              COALESCE(u.is_admin, 0) AS author_is_admin
+       FROM comments c
+       LEFT JOIN users u ON c.user_id = u.id
+       WHERE c.changelog_id = ? AND c.is_approved = 1
+       ORDER BY c.created_at ASC
+       LIMIT ? OFFSET ?`,
       [changelogId, parseInt(limit, 10), offset]
     );
 
@@ -350,11 +384,34 @@ async function getComments(req, res, projectId) {
   }
 }
 
+async function labelCounts(req, res, projectId) {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT label, COUNT(*) AS count
+       FROM changelogs
+       WHERE status = 'published' AND project_id = ?
+       GROUP BY label
+       ORDER BY label ASC`,
+      [projectId]
+    );
+    const counts = {};
+    for (const r of rows) {
+      if (!r.label) continue;
+      counts[r.label] = Number(r.count) || 0;
+    }
+    res.json({ counts });
+  } catch (error) {
+    console.error('Label counts error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 module.exports = {
   listChangelogs,
   getChangelogDetail,
   postVote,
   postComment,
   getComments,
+  labelCounts,
   syncVoteCounts
 };

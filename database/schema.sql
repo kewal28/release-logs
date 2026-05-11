@@ -11,7 +11,11 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    display_name VARCHAR(128) NULL,
     is_admin TINYINT(1) DEFAULT 0,
+    email_verified TINYINT(1) NOT NULL DEFAULT 1,
+    verification_token_hash VARCHAR(64) NULL,
+    verification_token_expires_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -28,6 +32,16 @@ CREATE TABLE IF NOT EXISTS projects (
     CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS project_users (
+    project_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_id, user_id),
+    KEY idx_pu_user (user_id),
+    CONSTRAINT fk_pu_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pu_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS changelogs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -37,6 +51,7 @@ CREATE TABLE IF NOT EXISTS changelogs (
     author_id INT NOT NULL,
     project_id INT NOT NULL,
     published_at TIMESTAMP NULL,
+    release_date DATE NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     slug VARCHAR(255) UNIQUE,
@@ -46,6 +61,8 @@ CREATE TABLE IF NOT EXISTS changelogs (
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_changelogs_release_date ON changelogs (release_date);
 
 CREATE TABLE IF NOT EXISTS images (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -73,13 +90,18 @@ CREATE TABLE IF NOT EXISTS votes (
 CREATE TABLE IF NOT EXISTS comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     changelog_id INT NOT NULL,
+    parent_id INT NULL,
+    user_id INT NULL,
     author_name VARCHAR(255) NOT NULL,
-    author_email VARCHAR(255) NOT NULL,
+    author_email VARCHAR(255) NULL,
     content TEXT NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     is_approved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE
+    FOREIGN KEY (changelog_id) REFERENCES changelogs(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE,
+    KEY idx_comments_parent (parent_id)
 );
 
 CREATE TABLE IF NOT EXISTS project_labels (

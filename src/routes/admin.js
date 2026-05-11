@@ -8,8 +8,10 @@ const settingsService = require('../services/settings');
 const { generatePublicKey } = require('../config/schemaMigrate');
 const bcrypt = require('bcryptjs');
 const { adminRateLimit } = require('../middleware/rateLimit');
+const Filter = require('bad-words');
 
 const router = express.Router();
+const badWordsFilter = new Filter();
 
 async function changelogUpload(req, res, next) {
   try {
@@ -33,13 +35,22 @@ router.use(adminRateLimit);
 
 router.get('/projects', async (req, res) => {
   try {
-    let sql = 'SELECT id, name, public_key, created_at FROM projects WHERE user_id = ? ORDER BY id ASC';
-    const params = [req.user.id];
+    let projects;
     if (req.user.is_admin) {
-      sql = 'SELECT id, name, public_key, user_id, created_at FROM projects ORDER BY id DESC';
-      params.length = 0;
+      [projects] = await pool.execute(
+        'SELECT id, name, public_key, user_id, created_at FROM projects ORDER BY id DESC'
+      );
+    } else {
+      const uid = req.user.id;
+      [projects] = await pool.execute(
+        `SELECT DISTINCT p.id, p.name, p.public_key, p.user_id, p.created_at
+         FROM projects p
+         LEFT JOIN project_users pu ON pu.project_id = p.id AND pu.user_id = ?
+         WHERE p.user_id = ? OR pu.user_id = ?
+         ORDER BY p.id ASC`,
+        [uid, uid, uid]
+      );
     }
-    const [projects] = params.length ? await pool.execute(sql, params) : await pool.execute(sql);
     res.json({ projects });
   } catch (e) {
     console.error('List projects error:', e);
@@ -56,6 +67,20 @@ router.post(
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
+
+      if (!req.user.is_admin) {
+        const [[{ cnt }]] = await pool.execute(
+          'SELECT COUNT(*) AS cnt FROM projects WHERE user_id = ?',
+          [req.user.id]
+        );
+        if (Number(cnt) >= 1) {
+          const [[user]] = await pool.execute('SELECT is_paid FROM users WHERE id = ?', [req.user.id]);
+          if (!user || !user.is_paid) {
+            return res.status(403).json({ error: 'Upgrade required', upgrade: true });
+          }
+        }
+      }
+
       let key = generatePublicKey();
       let inserted = false;
       for (let t = 0; t < 8 && !inserted; t++) {
@@ -82,6 +107,165 @@ router.post(
     }
   }
 );
+
+router.put('/projects/:id', async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id, 10);
+    const name = (req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    if (name.length > 255) return res.status(400).json({ error: 'Name too long' });
+
+    const ids = await projectIdsScoped(req);
+    if (!ids.includes(projectId)) return res.status(403).json({ error: 'Forbidden' });
+
+    const [rows] = await pool.execute('SELECT id FROM projects WHERE id = ?', [projectId]);
+    if (!rows.length) return res.status(404).json({ error: 'Project not found' });
+
+    await pool.execute('UPDATE projects SET name = ? WHERE id = ?', [name, projectId]);
+    const [updated] = await pool.execute('SELECT * FROM projects WHERE id = ?', [projectId]);
+    res.json({ project: updated[0] });
+  } catch (e) {
+    console.error('Rename project error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/projects/:id', requireAdmin, async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id, 10);
+    const [rows] = await pool.execute('SELECT id FROM projects WHERE id = ?', [projectId]);
+    if (!rows.length) return res.status(404).json({ error: 'Project not found' });
+    await pool.execute('DELETE FROM projects WHERE id = ?', [projectId]);
+    res.json({ message: 'Project deleted' });
+  } catch (e) {
+    console.error('Delete project error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+async function projectIdsScoped(req) {
+  if (req.user.is_admin) {
+    const [rows] = await pool.execute('SELECT id FROM projects');
+    return rows.map((r) => r.id);
+  }
+  const uid = req.user.id;
+  const [rows] = await pool.execute(
+    `SELECT id FROM projects WHERE user_id = ?
+     UNION
+     SELECT p.id FROM projects p
+     INNER JOIN project_users pu ON pu.project_id = p.id AND pu.user_id = ?`,
+    [uid, uid]
+  );
+  return rows.map((r) => r.id);
+}
+
+/** Workspace-level stats (all projects the user can see, or admin: all projects). */
+router.get('/dashboard/overview', async (req, res) => {
+  try {
+    const ids = await projectIdsScoped(req);
+    const [[{ total_users }]] = await pool.execute('SELECT COUNT(*) AS total_users FROM users');
+
+    if (!ids.length) {
+      return res.json({
+        summary: {
+          total_projects: 0,
+          total_changelogs: 0,
+          total_published: 0,
+          total_comments: 0,
+          pending_comments: 0,
+          total_upvotes: 0,
+          total_downvotes: 0,
+          total_users: total_users || 0,
+          total_views: 0
+        },
+        latest: [],
+        views_by_day: []
+      });
+    }
+
+    const ph = ids.map(() => '?').join(',');
+
+    const [[{ total_projects }]] = await pool.execute(
+      req.user.is_admin ? 'SELECT COUNT(*) AS total_projects FROM projects' : 'SELECT COUNT(*) AS total_projects FROM projects WHERE user_id = ?',
+      req.user.is_admin ? [] : [req.user.id]
+    );
+
+    const [[{ total_changelogs }]] = await pool.execute(
+      `SELECT COUNT(*) AS total_changelogs FROM changelogs WHERE project_id IN (${ph})`,
+      ids
+    );
+    const [[{ total_published }]] = await pool.execute(
+      `SELECT COUNT(*) AS total_published FROM changelogs WHERE project_id IN (${ph}) AND status = 'published'`,
+      ids
+    );
+    const [[{ total_comments }]] = await pool.execute(
+      `SELECT COUNT(*) AS total_comments FROM comments cm
+      INNER JOIN changelogs c ON cm.changelog_id = c.id WHERE c.project_id IN (${ph})`,
+      ids
+    );
+    const [[{ pending_comments }]] = await pool.execute(
+      `SELECT COUNT(*) AS pending_comments FROM comments cm
+      INNER JOIN changelogs c ON cm.changelog_id = c.id
+      WHERE c.project_id IN (${ph}) AND cm.is_approved = 0`,
+      ids
+    );
+    const [[{ total_upvotes }]] = await pool.execute(
+      `SELECT COALESCE(SUM(c.upvote_count),0) AS total_upvotes FROM changelogs c WHERE c.project_id IN (${ph})`,
+      ids
+    );
+    const [[{ total_downvotes }]] = await pool.execute(
+      `SELECT COALESCE(SUM(c.downvote_count),0) AS total_downvotes FROM changelogs c WHERE c.project_id IN (${ph})`,
+      ids
+    );
+    const [[{ total_views }]] = await pool.execute(
+      `SELECT COALESCE(SUM(c.view_count),0) AS total_views FROM changelogs c WHERE c.project_id IN (${ph})`,
+      ids
+    );
+
+    const [latest] = await pool.execute(
+      `SELECT c.id, c.title, c.status, c.label, c.project_id,
+        COALESCE(c.upvote_count,0) AS upvotes,
+        COALESCE(c.downvote_count,0) AS downvotes,
+        (SELECT COUNT(*) FROM comments cm WHERE cm.changelog_id = c.id AND cm.is_approved = 1) AS comments
+      FROM changelogs c
+      WHERE c.project_id IN (${ph})
+      ORDER BY c.updated_at DESC
+      LIMIT 5`,
+      ids
+    );
+
+    const [viewsRows] = await pool.execute(
+      `SELECT DATE(COALESCE(c.release_date, c.published_at, c.created_at)) AS d,
+        SUM(c.view_count) AS v
+      FROM changelogs c
+      WHERE c.project_id IN (${ph})
+        AND c.status = 'published'
+        AND COALESCE(c.release_date, DATE(c.published_at), DATE(c.created_at)) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      GROUP BY DATE(COALESCE(c.release_date, c.published_at, c.created_at))
+      ORDER BY d ASC`,
+      ids
+    );
+
+    res.json({
+      summary: {
+        total_projects: total_projects || 0,
+        total_changelogs: total_changelogs || 0,
+        total_published: total_published || 0,
+        total_comments: total_comments || 0,
+        pending_comments: pending_comments || 0,
+        total_upvotes: total_upvotes || 0,
+        total_downvotes: total_downvotes || 0,
+        total_users: total_users || 0,
+        total_views: total_views || 0
+      },
+      latest: latest || [],
+      views_by_day: viewsRows || []
+    });
+  } catch (e) {
+    console.error('Dashboard overview error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 router.get('/dashboard/stats', async (req, res) => {
   try {
@@ -252,19 +436,35 @@ async function getUniqueSlug(pool, baseSlug, projectId, excludeId = null) {
 
 async function assertProjectAccess(req, projectId) {
   if (!projectId) return null;
+  const uid = req.user.id;
+  const isAdm = req.user.is_admin ? 1 : 0;
   const [rows] = await pool.execute(
-    'SELECT id FROM projects WHERE id = ? AND (user_id = ? OR ? = 1)',
-    [projectId, req.user.id, req.user.is_admin ? 1 : 0]
+    `SELECT p.id FROM projects p
+     WHERE p.id = ?
+     AND (
+       ? = 1
+       OR p.user_id = ?
+       OR EXISTS (SELECT 1 FROM project_users pu WHERE pu.project_id = p.id AND pu.user_id = ?)
+     )`,
+    [projectId, isAdm, uid, uid]
   );
   return rows[0] || null;
 }
 
 async function assertChangelogEditable(req, changelogId) {
+  const uid = req.user.id;
+  const isAdm = req.user.is_admin ? 1 : 0;
   const [rows] = await pool.execute(
     `SELECT c.* FROM changelogs c
      INNER JOIN projects p ON c.project_id = p.id
-     WHERE c.id = ? AND (p.user_id = ? OR ? = 1 OR c.author_id = ?)`,
-    [changelogId, req.user.id, req.user.is_admin ? 1 : 0, req.user.id]
+     WHERE c.id = ?
+     AND (
+       ? = 1
+       OR p.user_id = ?
+       OR c.author_id = ?
+       OR EXISTS (SELECT 1 FROM project_users pu WHERE pu.project_id = p.id AND pu.user_id = ?)
+     )`,
+    [changelogId, isAdm, uid, uid, uid]
   );
   return rows[0] || null;
 }
@@ -322,7 +522,16 @@ router.get('/changelogs', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const { status = 'all', page = 1, limit = 10 } = req.query;
+    const {
+      status = 'all',
+      page = 1,
+      limit = 10,
+      q,
+      author,
+      has_images,
+      release_from,
+      release_to
+    } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE c.project_id = ?';
@@ -332,8 +541,34 @@ router.get('/changelogs', async (req, res) => {
       whereClause += ' AND c.status = ?';
       params.push(status);
     }
+    if (q && String(q).trim()) {
+      whereClause += ' AND c.title LIKE ?';
+      params.push(`%${String(q).trim()}%`);
+    }
+    if (author && String(author).trim()) {
+      whereClause += ' AND u.username LIKE ?';
+      params.push(`%${String(author).trim()}%`);
+    }
+    if (release_from) {
+      whereClause +=
+        ' AND COALESCE(c.release_date, DATE(c.published_at), DATE(c.created_at)) >= ?';
+      params.push(String(release_from).slice(0, 10));
+    }
+    if (release_to) {
+      whereClause +=
+        ' AND COALESCE(c.release_date, DATE(c.published_at), DATE(c.created_at)) <= ?';
+      params.push(String(release_to).slice(0, 10));
+    }
+    if (String(has_images) === '1') {
+      whereClause += ' AND EXISTS (SELECT 1 FROM images im WHERE im.changelog_id = c.id)';
+    } else if (String(has_images) === '0') {
+      whereClause += ' AND NOT EXISTS (SELECT 1 FROM images im WHERE im.changelog_id = c.id)';
+    }
 
-    const [countResult] = await pool.execute(`SELECT COUNT(*) as total FROM changelogs c ${whereClause}`, params);
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM changelogs c LEFT JOIN users u ON c.author_id = u.id ${whereClause}`,
+      params
+    );
 
     const total = countResult[0].total;
 
@@ -345,7 +580,7 @@ router.get('/changelogs', async (req, res) => {
        FROM changelogs c
        LEFT JOIN users u ON c.author_id = u.id
        ${whereClause}
-       ORDER BY c.created_at DESC
+       ORDER BY COALESCE(c.release_date, DATE(c.published_at), DATE(c.created_at)) DESC, c.created_at DESC
        LIMIT ? OFFSET ?`,
       [...params, parseInt(limit, 10), offset]
     );
@@ -423,6 +658,7 @@ router.post('/changelogs', changelogUpload, [
   body('title').trim().isLength({ min: 1, max: 255 }).withMessage('Title is required and must be less than 255 characters'),
   body('body').trim().isLength({ min: 1 }).withMessage('Body is required'),
   body('label').trim().isLength({ min: 1, max: 64 }).withMessage('Label is required'),
+  body('release_date').optional().isISO8601({ strict: true }).withMessage('release_date must be a valid ISO date'),
   body('status').optional().isIn(['draft', 'published']).withMessage('Status must be draft or published')
 ], async (req, res) => {
   try {
@@ -437,7 +673,7 @@ router.post('/changelogs', changelogUpload, [
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const { title, body, label } = req.body;
+    const { title, body, label, release_date } = req.body;
     let { status } = req.body;
     status = status || 'draft';
     const files = req.files || [];
@@ -455,8 +691,8 @@ router.post('/changelogs', changelogUpload, [
     const slug = await getUniqueSlug(pool, baseSlug, projectId);
 
     const [result] = await pool.execute(
-      'INSERT INTO changelogs (title, slug, body, label, status, author_id, project_id, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = "published" THEN CURRENT_TIMESTAMP ELSE NULL END)',
-      [title, slug, body, label, status, req.user.id, projectId, status]
+      'INSERT INTO changelogs (title, slug, body, label, status, author_id, project_id, published_at, release_date) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = "published" THEN CURRENT_TIMESTAMP ELSE NULL END, ?)',
+      [title, slug, body, label, status, req.user.id, projectId, status, release_date || null]
     );
 
     const changelogId = result.insertId;
@@ -553,6 +789,7 @@ router.put('/changelogs/:id', changelogUpload, [
   body('title').optional().trim().isLength({ min: 1, max: 255 }).withMessage('Title must be less than 255 characters'),
   body('body').optional().trim().isLength({ min: 1 }).withMessage('Body cannot be empty'),
   body('label').optional().trim().isLength({ min: 1, max: 64 }),
+  body('release_date').optional().isISO8601({ strict: true }).withMessage('release_date must be a valid ISO date'),
   body('status').optional().isIn(['draft', 'published']).withMessage('Status must be draft or published')
 ], async (req, res) => {
   try {
@@ -562,7 +799,7 @@ router.put('/changelogs/:id', changelogUpload, [
     }
 
     const { id } = req.params;
-    const { title, body, label, status } = req.body;
+    const { title, body, label, status, release_date } = req.body;
     const files = req.files || [];
 
     const existing = await assertChangelogEditable(req, id);
@@ -599,6 +836,10 @@ router.put('/changelogs/:id', changelogUpload, [
     if (label !== undefined) {
       updateFields.push('label = ?');
       updateValues.push(label);
+    }
+    if (release_date !== undefined) {
+      updateFields.push('release_date = ?');
+      updateValues.push(release_date || null);
     }
     if (status !== undefined) {
       updateFields.push('status = ?');
@@ -825,6 +1066,113 @@ router.delete('/changelogs/:id/images/:imageId', requireAdmin, async (req, res) 
   }
 });
 
+router.post(
+  '/changelogs/:id/comments',
+  [body('content').trim().isLength({ min: 1, max: 2000 })],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+      const changelogId = parseInt(req.params.id, 10);
+      const changelogRow = await assertChangelogEditable(req, changelogId);
+      if (!changelogRow) return res.status(403).json({ error: 'Forbidden' });
+
+      const [urows] = await pool.execute(
+        'SELECT username, email, COALESCE(NULLIF(TRIM(display_name), ""), username) AS display_name FROM users WHERE id = ?',
+        [req.user.id]
+      );
+      if (!urows.length) return res.status(401).json({ error: 'Unauthorized' });
+      const u = urows[0];
+      const filteredContent = badWordsFilter.clean(req.body.content);
+      const ip = req.ip || '';
+      const rawParentId = req.body.parent_id ? parseInt(req.body.parent_id, 10) : null;
+      const parentId = (rawParentId && Number.isFinite(rawParentId)) ? rawParentId : null;
+      const [result] = await pool.execute(
+        `INSERT INTO comments (changelog_id, parent_id, user_id, author_name, author_email, content, ip_address, is_approved)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+        [changelogId, parentId, req.user.id, u.display_name, u.email, filteredContent, ip]
+      );
+      res.status(201).json({
+        message: 'Comment posted',
+        comment: {
+          id: result.insertId, changelog_id: changelogId, parent_id: parentId,
+          user_id: req.user.id, author_name: u.display_name, author_email: u.email,
+          content: filteredContent, is_approved: true,
+          author_is_admin: req.user.is_admin ? 1 : 0, created_at: new Date()
+        }
+      });
+    } catch (error) {
+      console.error('Staff comment error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+router.post(
+  '/changelogs/:id/comments/reply',
+  [
+    body('parent_id').isInt({ min: 1 }).toInt(),
+    body('content').trim().isLength({ min: 1, max: 2000 })
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const changelogId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(changelogId)) {
+        return res.status(400).json({ error: 'Invalid changelog id' });
+      }
+      const changelogRow = await assertChangelogEditable(req, changelogId);
+      if (!changelogRow) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const { parent_id, content } = req.body;
+      const [parents] = await pool.execute('SELECT id, changelog_id FROM comments WHERE id = ?', [parent_id]);
+      if (!parents.length || parents[0].changelog_id !== changelogId) {
+        return res.status(400).json({ error: 'Invalid parent comment' });
+      }
+
+      const [urows] = await pool.execute(
+        'SELECT username, email, COALESCE(NULLIF(TRIM(display_name), ""), username) AS display_name FROM users WHERE id = ?',
+        [req.user.id]
+      );
+      if (!urows.length) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const u = urows[0];
+      const filteredContent = badWordsFilter.clean(content);
+      const ip = req.ip || '';
+      const [result] = await pool.execute(
+        `INSERT INTO comments (changelog_id, parent_id, user_id, author_name, author_email, content, ip_address, is_approved)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+        [changelogId, parent_id, req.user.id, u.display_name, u.email, filteredContent, ip]
+      );
+
+      res.status(201).json({
+        message: 'Reply posted',
+        comment: {
+          id: result.insertId,
+          changelog_id: changelogId,
+          parent_id,
+          user_id: req.user.id,
+          author_name: u.display_name,
+          author_email: u.email,
+          content: filteredContent,
+          is_approved: true,
+          author_is_admin: req.user.is_admin ? 1 : 0,
+          created_at: new Date()
+        }
+      });
+    } catch (error) {
+      console.error('Staff comment reply error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
 /**
  * @swagger
  * /api/admin/comments:
@@ -858,49 +1206,58 @@ router.delete('/changelogs/:id/images/:imageId', requireAdmin, async (req, res) 
  */
 router.get('/comments', requireAdmin, async (req, res) => {
   try {
-    const { status = 'all', page = 1, limit = 20 } = req.query;
+    const { status = 'all', page = 1, limit = 20, projectId: projectIdRaw } = req.query;
     const offset = (page - 1) * limit;
-    
-    let whereClause = '';
-    let params = [];
-    
-    if (status !== 'all') {
-      if (status === 'approved') {
-        whereClause = 'WHERE c.is_approved = 1';
-      } else if (status === 'pending') {
-        whereClause = 'WHERE c.is_approved = 0';
-      }
+    const projectId = projectIdRaw ? parseInt(projectIdRaw, 10) : null;
+
+    const conditions = [];
+    const params = [];
+
+    if (status === 'approved') {
+      conditions.push('c.is_approved = 1');
+    } else if (status === 'pending') {
+      conditions.push('c.is_approved = 0');
     }
-    
-    // Get total count
+
+    if (projectId && Number.isFinite(projectId)) {
+      conditions.push('ch.project_id = ?');
+      params.push(projectId);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM comments c ${whereClause}`,
+      `SELECT COUNT(*) as total FROM comments c
+       INNER JOIN changelogs ch ON c.changelog_id = ch.id
+       ${whereClause}`,
       params
     );
-    
+
     const total = countResult[0].total;
-    
-    // Get comments with changelog info
+    const limitN = parseInt(limit, 10);
+
     const [comments] = await pool.execute(
-      `SELECT c.*, ch.title as changelog_title, ch.id as changelog_id
+      `SELECT c.*, ch.title as changelog_title, ch.id as changelog_id, ch.project_id AS changelog_project_id,
+              ch.body AS changelog_body, ch.label AS changelog_label, ch.status AS changelog_status,
+              COALESCE(u.is_admin, 0) AS author_is_admin
        FROM comments c
-       LEFT JOIN changelogs ch ON c.changelog_id = ch.id
+       INNER JOIN changelogs ch ON c.changelog_id = ch.id
+       LEFT JOIN users u ON c.user_id = u.id
        ${whereClause}
-       ORDER BY c.created_at DESC
+       ORDER BY c.changelog_id DESC, c.created_at ASC
        LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+      [...params, limitN, offset]
     );
-    
+
     res.json({
       comments,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(page, 10),
+        limit: limitN,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitN)
       }
     });
-    
   } catch (error) {
     console.error('Get comments error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -1053,42 +1410,62 @@ router.delete('/comments/:id', requireAdmin, async (req, res) => {
  */
 router.get('/users', requireAdmin, async (req, res) => {
   try {
-    const { role = 'all', page = 1, limit = 10 } = req.query;
+    const { role = 'all', page = 1, limit = 10, scope = 'team' } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = '';
-    let params = [];
+    const conditions = [];
+    const params = [];
+
+    if (scope === 'site' && req.user.is_admin) {
+      // Full directory (site administrators only)
+    } else {
+      const uid = req.user.id;
+      const [accessible] = await pool.execute(
+        `SELECT id FROM projects WHERE user_id = ?
+         UNION
+         SELECT project_id AS id FROM project_users WHERE user_id = ?`,
+        [uid, uid]
+      );
+      const projIds = accessible.map((r) => r.id).filter((id) => id != null);
+      if (!projIds.length) {
+        conditions.push('u.id = ?');
+        params.push(uid);
+      } else {
+        const ph = projIds.map(() => '?').join(',');
+        conditions.push(
+          `(u.id = ? OR u.id IN (SELECT p.user_id FROM projects p WHERE p.id IN (${ph}) UNION SELECT pu.user_id FROM project_users pu WHERE pu.project_id IN (${ph})))`
+        );
+        params.push(uid, ...projIds, ...projIds);
+      }
+    }
 
     if (role !== 'all') {
-      whereClause = 'WHERE is_admin = ?';
+      conditions.push('u.is_admin = ?');
       params.push(role === 'admin' ? 1 : 0);
     }
 
-    // Get total count
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM users ${whereClause}`,
-      params
-    );
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limitN = parseInt(limit, 10);
+
+    const [countResult] = await pool.execute(`SELECT COUNT(*) as total FROM users u ${whereClause}`, params);
     const total = countResult[0].total;
 
-    // Get users
     const [users] = await pool.execute(
-      `SELECT id, username, email, is_admin, created_at FROM users ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+      `SELECT u.id, u.username, u.email, u.is_admin, u.is_paid, u.created_at FROM users u ${whereClause} ORDER BY u.created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limitN, offset]
     );
 
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / limitN);
 
     res.json({
       users,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(page, 10),
+        limit: limitN,
         total,
         pages: totalPages
       }
     });
-
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -1152,7 +1529,8 @@ router.post('/users', requireAdmin, [
     .withMessage('Password must be at least 6 characters long'),
   body('role')
     .isIn(['admin', 'user'])
-    .withMessage('Role must be either admin or user')
+    .withMessage('Role must be either admin or user'),
+  body('project_id').isInt({ min: 1 }).toInt().withMessage('project_id is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -1160,9 +1538,20 @@ router.post('/users', requireAdmin, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, project_id: projectId } = req.body;
 
-    // Check if username or email already exists
+    const proj = await assertProjectAccess(req, projectId);
+    if (!proj) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const [ownerRows] = await pool.execute('SELECT id FROM projects WHERE id = ? AND user_id = ?', [
+      projectId,
+      req.user.id
+    ]);
+    if (!req.user.is_admin && ownerRows.length === 0) {
+      return res.status(403).json({ error: 'Only the project owner can invite users to this project' });
+    }
+
     const [existingUsers] = await pool.execute(
       'SELECT id FROM users WHERE username = ? OR email = ?',
       [username, email]
@@ -1172,25 +1561,32 @@ router.post('/users', requireAdmin, [
       return res.status(400).json({ error: 'Username or email already exists' });
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create new user
     const [result] = await pool.execute(
       'INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, ?)',
       [username, email, passwordHash, role === 'admin' ? 1 : 0]
     );
+    const newId = result.insertId;
+
+    try {
+      await pool.execute('INSERT IGNORE INTO project_users (project_id, user_id) VALUES (?, ?)', [
+        projectId,
+        newId
+      ]);
+    } catch (puErr) {
+      console.error('project_users insert:', puErr);
+    }
 
     res.status(201).json({
       message: 'User created successfully',
       user: {
-        id: result.insertId,
+        id: newId,
         username,
         email,
         is_admin: role === 'admin'
       }
     });
-
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -1322,6 +1718,46 @@ router.put('/users/:id', requireAdmin, [
 
   } catch (error) {
     console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/users/:id/projects', requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { projectIds } = req.body;
+    if (!Array.isArray(projectIds)) return res.status(400).json({ error: 'projectIds must be an array' });
+    const [existing] = await pool.execute('SELECT id FROM users WHERE id = ?', [userId]);
+    if (!existing.length) return res.status(404).json({ error: 'User not found' });
+    await pool.execute('DELETE FROM project_users WHERE user_id = ?', [userId]);
+    for (const pid of projectIds) {
+      const [proj] = await pool.execute('SELECT user_id FROM projects WHERE id = ?', [pid]);
+      if (proj.length && proj[0].user_id !== userId) {
+        try {
+          await pool.execute('INSERT IGNORE INTO project_users (project_id, user_id) VALUES (?, ?)', [pid, userId]);
+        } catch (_) {}
+      }
+    }
+    res.json({ message: 'Project access updated' });
+  } catch (e) {
+    console.error('Update project access error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/users/:id/paid', requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { is_paid } = req.body;
+    if (typeof is_paid !== 'boolean' && is_paid !== 0 && is_paid !== 1) {
+      return res.status(400).json({ error: 'is_paid must be true or false' });
+    }
+    const [existing] = await pool.execute('SELECT id FROM users WHERE id = ?', [userId]);
+    if (!existing.length) return res.status(404).json({ error: 'User not found' });
+    await pool.execute('UPDATE users SET is_paid = ? WHERE id = ?', [is_paid ? 1 : 0, userId]);
+    res.json({ message: 'Paid status updated', userId, is_paid: !!is_paid });
+  } catch (e) {
+    console.error('Error updating paid status:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

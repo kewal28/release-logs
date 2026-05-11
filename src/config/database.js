@@ -32,7 +32,12 @@ async function initializeDatabase() {
         username VARCHAR(50) UNIQUE NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
+        display_name VARCHAR(128) NULL,
         is_admin TINYINT(1) DEFAULT 0,
+        is_paid TINYINT(1) NOT NULL DEFAULT 0,
+        email_verified TINYINT(1) NOT NULL DEFAULT 1,
+        verification_token_hash VARCHAR(64) NULL,
+        verification_token_expires_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )

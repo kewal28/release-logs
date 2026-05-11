@@ -199,7 +199,18 @@ class SettingsService {
    */
   async getAppConfig(options = {}) {
     const { maskSecrets = false } = options;
-    const [companyName, logoUrl, theme, timezone, commentNotifications, adminEmail] = await Promise.all([
+    const [
+      companyName,
+      logoUrl,
+      theme,
+      timezone,
+      commentNotifications,
+      adminEmail,
+      changelogMaxImageSizeBytes,
+      changelogMaxImagesPerEntry,
+      changelogAllowedImageTypes,
+      showChangelogAuthorUsername
+    ] = await Promise.all([
       this.getSetting('company_name', 'Release Log'),
       this.getSetting('logo_url', ''),
       this.getSetting('theme', 'indigo'),

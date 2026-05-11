@@ -55,6 +55,10 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middleware
 app.use(helmet({
+  // Allow embedding the widget script on other origins.
+  // Without this, browsers can block /js/widget.js with
+  // ERR_BLOCKED_BY_RESPONSE.NotSameOrigin (CORP default).
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -121,6 +125,7 @@ app.get('/health', async (req, res) => {
 });
 
 const sendView = (file) => (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'views', file));
 };
 
@@ -132,7 +137,16 @@ app.get('/login', sendView('login.html'));
 app.get('/signup', sendView('signup.html'));
 app.get('/verify-email', sendView('verify-email.html'));
 app.get('/changelog', sendView('changelog.html'));
+
+// Clean public URL: /:projectKey — serves the changelog for that project, no site nav
+app.get('/p/:projectKey', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'changelog.html'));
+});
 app.get('/dashboard', sendView('dashboard.html'));
+app.get('/releases', sendView('dashboard.html'));
+app.get('/comments', sendView('dashboard.html'));
+app.get('/team', sendView('dashboard.html'));
+app.get('/projects', sendView('dashboard.html'));
 app.get('/dashboard/settings', sendView('settings.html'));
 
 app.get('/admin', (req, res) => res.redirect(302, '/dashboard'));

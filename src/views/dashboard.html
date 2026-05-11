@@ -1,5 +1,3 @@
-<<<<<<< Current (Your changes)
-=======
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -85,73 +83,151 @@
     </div>
 
     <!-- Admin Dashboard -->
-    <div id="adminDashboard" class="hidden">
-        <!-- Navigation -->
-        <nav class="bg-white shadow-sm border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <h1 class="text-xl font-semibold text-gray-900">Release Log Admin</h1>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <span id="currentUser" class="text-sm text-gray-700"></span>
-                        <button id="changePasswordBtn" class="text-sm text-gray-600 hover:text-gray-900">
-                            <i class="fas fa-key mr-1"></i>Change Password
+    <div id="adminDashboard" class="hidden min-h-screen flex bg-gray-100">
+        <!-- Left sidebar -->
+        <aside class="w-56 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+            <div class="h-14 px-4 flex items-center border-b border-gray-200">
+                <span class="font-semibold text-gray-900">Release Log</span>
+            </div>
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <button type="button" data-main-nav="dashboard" class="main-nav-btn w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-50 text-left">
+                    <i class="fas fa-chart-pie w-5 text-center text-indigo-600"></i> Dashboard
+                </button>
+                <button type="button" data-main-nav="changelogs" class="main-nav-btn w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 text-left">
+                    <i class="fas fa-list-alt w-5 text-center text-gray-500"></i> Release log
+                </button>
+                <button type="button" data-main-nav="comments" class="main-nav-btn admin-only w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 text-left">
+                    <i class="fas fa-comments w-5 text-center text-gray-500"></i> Comments
+                </button>
+                <button type="button" data-main-nav="users" class="main-nav-btn admin-only w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 text-left">
+                    <i class="fas fa-users w-5 text-center text-gray-500"></i> Users
+                </button>
+                <button type="button" data-main-nav="projects" class="main-nav-btn w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 text-left">
+                    <i class="fas fa-folder w-5 text-center text-gray-500"></i> Projects
+                </button>
+                <a href="/dashboard/settings" class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-cog w-5 text-center text-gray-500"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0">
+            <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 gap-4 flex-shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <label for="projectSelect" class="text-sm text-gray-600 whitespace-nowrap hidden sm:inline">Project</label>
+                    <select id="projectSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-sm max-w-[220px] sm:max-w-xs truncate"></select>
+                </div>
+                <div class="relative">
+                    <button type="button" id="profileMenuBtn" class="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700">
+                        <span id="currentUser" class="truncate max-w-[140px] sm:max-w-xs"></span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                    </button>
+                    <div id="profileMenu" class="hidden absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                        <button type="button" id="profileChangePasswordBtn" class="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-key mr-2 text-gray-400"></i> Password
                         </button>
-                        <a href="/dashboard/settings" class="text-sm text-gray-600 hover:text-gray-900">
-                            <i class="fas fa-cog mr-1"></i>Settings
-                        </a>
-                        <button id="logoutBtn" class="text-sm text-red-600 hover:text-red-800">Logout</button>
+                        <button type="button" id="profileLogoutBtn" class="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
                     </div>
                 </div>
-            </div>
-        </nav>
+            </header>
 
-        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <!-- Tabs -->
-            <div class="px-4 py-6 sm:px-0">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex space-x-8">
-                        <button id="changelogsTab" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                            Changelogs
-                        </button>
-                        <button id="commentsTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
-                            Comments
-                        </button>
-                        <button id="teamTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
-                            Team Members
-                        </button>
-                    </nav>
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+            <!-- Dashboard Tab -->
+            <div id="dashboardTabContent" class="space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
+                    <p class="text-sm text-gray-500 mt-1">Overview for all projects you can access.</p>
+                </div>
+                <p id="embedKeyDisplayDash" class="text-xs text-gray-500 font-mono break-all"></p>
+                <div id="overviewLoading" class="text-gray-500 text-sm">Loading…</div>
+                <div id="overviewGrid" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Release notes</p>
+                        <p id="ovTotalChangelogs" class="text-2xl font-bold text-gray-900 mt-1">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Comments</p>
+                        <p id="ovTotalComments" class="text-2xl font-bold text-gray-900 mt-1">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Users</p>
+                        <p id="ovTotalUsers" class="text-2xl font-bold text-gray-900 mt-1">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">Projects</p>
+                        <p id="ovTotalProjects" class="text-2xl font-bold text-gray-900 mt-1">0</p>
+                    </div>
+                </div>
+                <div id="overviewSecondary" class="hidden grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500">Likes</p>
+                        <p id="ovUpvotes" class="text-xl font-semibold text-gray-900">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500">Dislikes</p>
+                        <p id="ovDownvotes" class="text-xl font-semibold text-gray-900">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500">Pending comments</p>
+                        <p id="ovPending" class="text-xl font-semibold text-amber-700">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                        <p class="text-xs text-gray-500">Total views</p>
+                        <p id="ovViews" class="text-xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Views (last 30 days, by release day)</h3>
+                    <div id="viewsChartArea" class="h-40 flex items-end gap-1"></div>
+                    <p class="text-xs text-gray-400 mt-2">Based on stored view counts grouped by release/publish date.</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div class="px-4 py-3 border-b border-gray-100 font-medium text-gray-900">Latest 5 release notes</div>
+                    <ul id="overviewLatestList" class="divide-y divide-gray-100 text-sm"></ul>
                 </div>
             </div>
 
             <!-- Changelogs Tab Content -->
-            <div id="changelogsTabContent">
-                <!-- Header -->
-                <div class="px-4 py-6 sm:px-0">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-900">Changelogs</h2>
-                        <button id="newChangelogBtn" 
-                                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <i class="fas fa-plus mr-2"></i>New Changelog
+            <div id="changelogsTabContent" class="hidden">
+                <div class="mb-6 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900">Copy this code</h2>
+                            <p class="text-sm text-gray-600 mt-1">Paste the widget snippet on your site. Replace <code class="text-xs bg-white px-1 rounded border">release-btn</code> with your button id.</p>
+                        </div>
+                        <button type="button" id="copyEmbedBtn" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shadow-sm whitespace-nowrap">
+                            <i class="fas fa-copy mr-2"></i>Copy code
                         </button>
                     </div>
+                    <textarea id="embedSnippet" readonly rows="7" class="mt-4 w-full text-xs font-mono border border-gray-200 rounded-lg p-3 bg-white text-gray-800"></textarea>
+                </div>
 
-                    <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                        <h3 class="text-sm font-semibold text-gray-900">Embed / short code</h3>
-                        <p class="text-xs text-gray-600 mt-1 mb-3">Public changelog URL and a minimal HTML snippet. Adjust styling on your site as needed.</p>
-                        <textarea id="embedSnippet" readonly rows="4" class="w-full text-xs font-mono border border-gray-300 rounded p-2 bg-white text-gray-800"></textarea>
-                        <button type="button" id="copyEmbedBtn" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium">Copy snippet</button>
-                    </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                    <h2 class="text-2xl font-bold text-gray-900">Release notes</h2>
+                    <button id="newChangelogBtn" type="button"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium w-full sm:w-auto">
+                        <i class="fas fa-plus mr-2"></i>New release
+                    </button>
+                </div>
 
-                    <!-- Filters -->
-                    <div class="mt-4 flex space-x-4">
-                        <select id="statusFilter" class="border border-gray-300 rounded-md px-3 py-2">
-                            <option value="all">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                        </select>
-                    </div>
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <select id="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                        <option value="all">All status</option>
+                        <option value="draft">Draft</option>
+                        <option value="published">Published</option>
+                    </select>
+                    <input type="search" id="changelogSearchTitle" placeholder="Search by title" class="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-[140px]">
+                    <input type="text" id="changelogSearchAuthor" placeholder="Author" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32">
+                    <input type="date" id="changelogReleaseFrom" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" title="Release from">
+                    <input type="date" id="changelogReleaseTo" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" title="Release to">
+                    <select id="changelogHasImages" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Any images</option>
+                        <option value="1">Has images</option>
+                        <option value="0">No images</option>
+                    </select>
+                    <button type="button" id="changelogSearchBtn" class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Apply</button>
                 </div>
 
             <!-- Changelogs List -->
@@ -205,69 +281,93 @@
 
             <!-- Comments Tab Content -->
             <div id="commentsTabContent" class="hidden">
-                <!-- Header -->
-                <div class="px-4 py-6 sm:px-0">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-900">Comments</h2>
-                    </div>
-
-                    <!-- Filters -->
-                    <div class="mt-4 flex space-x-4">
-                        <select id="commentStatusFilter" class="border border-gray-300 rounded-md px-3 py-2">
-                            <option value="all">All Comments</option>
-                            <option value="approved">Approved</option>
-                            <option value="pending">Pending</option>
-                        </select>
-                    </div>
+                <style>
+                    #commentsSplitView { display:flex; height:calc(100vh - 160px); min-height:520px; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb; }
+                    #commentsLeftPanel { width:300px; flex-shrink:0; background:#f9fafb; border-right:1px solid #e5e7eb; display:flex; flex-direction:column; }
+                    #commentsRightPanel { flex:1; display:flex; flex-direction:column; background:#fff; min-width:0; }
+                    #commentsLeftHeader { padding:12px 14px; border-bottom:1px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+                    #commentsLeftList { flex:1; overflow-y:auto; }
+                    .cl-item { padding:11px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; transition:background 100ms; }
+                    .cl-item:hover,.cl-item.active { background:#eff6ff; }
+                    .cl-item.active { border-left:3px solid #4f46e5; }
+                    .cl-item-title { font:600 13px/1.3 system-ui; color:#111827; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                    .cl-item-meta { font:500 11px/1 system-ui; color:#6b7280; display:flex; gap:8px; align-items:center; }
+                    .cl-badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px; font:700 10px/1 system-ui; }
+                    .cl-badge-pending { background:#fef3c7; color:#92400e; }
+                    .cl-badge-approved { background:#d1fae5; color:#065f46; }
+                    #commentsRightEmpty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:#9ca3af; }
+                    #commentsRightEmpty i { font-size:40px; }
+                    #commentsThread { display:none; flex-direction:column; height:100%; }
+                    #commentsThreadHeader { padding:12px 14px; border-bottom:1px solid #e5e7eb; background:#fff; flex-shrink:0; }
+                    #commentsThreadReleaseCard { padding:12px 14px; background:#f9fafb; border-bottom:1px solid #e5e7eb; flex-shrink:0; max-height:140px; overflow-y:auto; }
+                    #commentsThreadBody { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px; background:#f0f4f8; }
+                    #commentsThreadFooter { padding:10px 14px; border-top:1px solid #e5e7eb; background:#fff; flex-shrink:0; display:none; }
+                    #commentsReplyInput { flex:1; border:1px solid #e5e7eb; border-radius:20px; padding:8px 14px; font:400 13px/1.5 system-ui; resize:none; outline:none; max-height:120px; overflow-y:auto; }
+                    #commentsReplyInput:focus { border-color:#a5b4fc; }
+                    #commentsReplySendBtn { width:36px; height:36px; border-radius:50%; background:#4f46e5; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+                    #commentsReplySendBtn:hover { background:#4338ca; }
+                    .chat-bubble-wrap { display:flex; flex-direction:column; }
+                    .chat-bubble { max-width:75%; padding:9px 13px; border-radius:14px; font:400 13px/1.5 system-ui; }
+                    .chat-bubble-in { background:#fff; border:1px solid #e5e7eb; border-bottom-left-radius:4px; align-self:flex-start; }
+                    .chat-bubble-in.admin-bubble { background:#eef2ff; border-color:#c7d2fe; }
+                    .chat-bubble-meta { font:600 10px/1 system-ui; color:#9ca3af; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+                    .chat-bubble-actions { display:flex; gap:8px; margin-top:4px; }
+                    .chat-action-btn { font:600 10px/1 system-ui; padding:3px 8px; border-radius:6px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; color:#374151; }
+                    .chat-action-btn:hover { background:#f3f4f6; }
+                    .chat-action-delete { color:#ef4444; border-color:#fecaca; }
+                    .chat-action-delete:hover { background:#fef2f2; }
+                </style>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-2xl font-bold text-gray-900">Comments</h2>
+                    <select id="commentStatusFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                        <option value="all">All</option>
+                        <option value="approved">Approved</option>
+                        <option value="pending">Pending</option>
+                    </select>
                 </div>
-
-                <!-- Comments List -->
-                <div id="commentsList" class="bg-white shadow overflow-hidden sm:rounded-md">
-                    <!-- Loading state -->
-                    <div id="commentsLoadingState" class="p-8 text-center">
-                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                        <p class="mt-2 text-gray-600">Loading comments...</p>
-                    </div>
-
-                    <!-- Empty state -->
-                    <div id="commentsEmptyState" class="hidden p-8 text-center">
-                        <i class="fas fa-comments text-4xl text-gray-400 mb-4"></i>
-                        <p class="text-gray-600">No comments found</p>
-                    </div>
-
-                    <!-- Comments table -->
-                    <ul id="commentsTable" class="hidden divide-y divide-gray-200"></ul>
-                </div>
-
-                <!-- Comments Pagination -->
-                <div id="commentsPagination" class="hidden mt-4 flex items-center justify-between">
-                    <div class="flex-1 flex justify-between sm:hidden">
-                        <button id="commentsPrevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            Previous
-                        </button>
-                        <button id="commentsNextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            Next
-                        </button>
-                    </div>
-                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-sm text-gray-700">
-                                Showing <span id="commentsStartItem">1</span> to <span id="commentsEndItem">20</span> of <span id="commentsTotalItems">0</span> results
-                            </p>
+                <div id="commentsSplitView">
+                    <div id="commentsLeftPanel">
+                        <div id="commentsLeftHeader">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Releases</p>
                         </div>
-                        <div>
-                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                <button id="commentsPrevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                    Previous
-                                </button>
-                                <div id="commentsPageNumbers" class="flex"></div>
-                                <button id="commentsNextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                    Next
-                                </button>
-                            </nav>
+                        <div id="commentsLoadingState" class="p-6 text-center text-gray-500 text-sm">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto mb-2"></div>Loading…
+                        </div>
+                        <div id="commentsEmptyState" class="hidden p-6 text-center text-gray-400 text-sm">
+                            <i class="fas fa-comments text-3xl mb-2 block"></i>No comments yet
+                        </div>
+                        <div id="commentsLeftList" class="hidden"></div>
+                    </div>
+                    <div id="commentsRightPanel">
+                        <div id="commentsRightEmpty">
+                            <i class="fas fa-comment-dots"></i>
+                            <p class="text-sm font-medium">Select a release to view comments</p>
+                        </div>
+                        <div id="commentsThread">
+                            <div id="commentsThreadHeader">
+                                <p id="commentsThreadTitle" class="font-semibold text-gray-900 text-sm"></p>
+                                <p id="commentsThreadMeta" class="text-xs text-gray-400 mt-1"></p>
+                            </div>
+                            <div id="commentsThreadReleaseCard"></div>
+                            <div id="commentsThreadBody"></div>
+                            <div id="commentsThreadFooter">
+                                <div id="commentsReplyContext" style="display:none;align-items:center;justify-content:space-between;background:#f0f4f8;border-radius:8px;padding:5px 10px;margin-bottom:6px;font:400 12px/1.4 system-ui;color:#374151;border-left:3px solid #4f46e5;">
+                                    <span id="commentsReplyContextLabel"></span>
+                                    <button id="commentsReplyCancelBtn" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:14px;padding:0 2px;" title="Cancel reply"><i class="fas fa-times"></i></button>
+                                </div>
+                                <div style="display:flex;align-items:flex-end;gap:8px;">
+                                    <textarea id="commentsReplyInput" rows="1" placeholder="Type a message…"></textarea>
+                                    <button id="commentsReplySendBtn" title="Send">
+                                        <i class="fas fa-paper-plane" style="color:#fff;font-size:14px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <!-- kept for JS compat -->
+                <ul id="commentsTable" class="hidden"></ul>
+                <div id="commentsPagination" class="hidden"></div>
             </div>
 
         <!-- Team Members Tab Content -->
@@ -339,6 +439,16 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div id="projectTabContent" class="hidden space-y-6 max-w-3xl">
+            <h2 class="text-2xl font-bold text-gray-900">Projects</h2>
+            <p class="text-sm text-gray-600">Each project has its own public key for the embed widget. Create additional projects when your plan allows.</p>
+            <button type="button" id="newProjectBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">+ New project</button>
+            <div id="projectsListCard" class="bg-white rounded-xl border border-gray-200 divide-y text-sm"></div>
+        </div>
+
+            </main>
         </div>
     </div>
 
@@ -548,6 +658,8 @@
                         <p class="mt-1 text-sm text-gray-500">Admins can manage changelogs, comments, and team members</p>
                     </div>
 
+                    <p id="teamProjectHint" class="mt-1 text-sm text-gray-600 hidden"></p>
+
                     <div id="teamMemberError" class="hidden text-red-600 text-sm"></div>
 
                     <div class="flex justify-end space-x-3 pt-4">
@@ -571,6 +683,280 @@
         let currentPage = 1;
         let totalPages = 1;
         let changelogs = [];
+        let projects = [];
+        let currentProjectId = null;
+
+        function updateEmbedKeyDisplay() {
+            const p = projects.find((x) => x.id === currentProjectId);
+            const t = p ? `Public key: ${p.public_key}` : '';
+            const el = document.getElementById('embedKeyDisplayDash');
+            if (el) el.textContent = t;
+        }
+
+        function syncProjectSelect() {
+            const el = document.getElementById('projectSelect');
+            if (!el) return;
+            el.innerHTML = (projects || []).map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+            if (projects.length) {
+                const saved = localStorage.getItem('currentProjectId');
+                let pid = projects[0].id;
+                if (saved && projects.some((p) => String(p.id) === saved)) pid = parseInt(saved, 10);
+                currentProjectId = pid;
+                el.value = String(pid);
+                localStorage.setItem('currentProjectId', String(pid));
+                updateEmbedKeyDisplay();
+            }
+        }
+
+        function onProjectChange() {
+            const el = document.getElementById('projectSelect');
+            if (!el) return;
+            currentProjectId = parseInt(el.value, 10);
+            localStorage.setItem('currentProjectId', String(currentProjectId));
+            updateEmbedKeyDisplay();
+            refreshEmbedSnippet();
+            loadDashboardOverview();
+            loadChangelogs();
+            const commentsPanel = document.getElementById('commentsTabContent');
+            if (commentsPanel && !commentsPanel.classList.contains('hidden')) {
+                commentsCurrentPage = 1;
+                loadComments();
+            }
+            const teamPanel = document.getElementById('teamTabContent');
+            if (teamPanel && !teamPanel.classList.contains('hidden')) {
+                teamCurrentPage = 1;
+                loadTeamMembers();
+            }
+        }
+
+        async function loadProjects() {
+            try {
+                const response = await Utils.Api.apiRequest('/admin/projects');
+                const data = await Utils.Api.handleApiResponse(response, 'Failed to load projects');
+                projects = data.projects || [];
+                if (!projects.length) {
+                    Utils.Toast.showInfo('No projects yet. Create one below.');
+                    navigateMain('projects');
+                    return;
+                }
+                syncProjectSelect();
+                renderProjectsCard();
+                refreshEmbedSnippet();
+                const initialPanel = PATH_NAV[window.location.pathname] || 'dashboard';
+                navigateMain(initialPanel, false);
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        async function loadDashboardOverview() {
+            const loading = document.getElementById('overviewLoading');
+            const grid = document.getElementById('overviewGrid');
+            const sec = document.getElementById('overviewSecondary');
+            if (loading) loading.classList.remove('hidden');
+            try {
+                const res = await Utils.Api.apiRequest('/admin/dashboard/overview');
+                const d = await Utils.Api.handleApiResponse(res, 'Failed to load overview');
+                const s = d.summary;
+                document.getElementById('ovTotalChangelogs').textContent = s.total_changelogs;
+                document.getElementById('ovTotalComments').textContent = s.total_comments;
+                document.getElementById('ovTotalUsers').textContent = s.total_users;
+                document.getElementById('ovTotalProjects').textContent = s.total_projects;
+                document.getElementById('ovUpvotes').textContent = s.total_upvotes;
+                document.getElementById('ovDownvotes').textContent = s.total_downvotes;
+                document.getElementById('ovPending').textContent = s.pending_comments;
+                document.getElementById('ovViews').textContent = s.total_views;
+
+                const chart = document.getElementById('viewsChartArea');
+                chart.innerHTML = '';
+                const days = d.views_by_day || [];
+                const maxV = Math.max(1, ...days.map((x) => Number(x.v) || 0));
+                days.forEach((row) => {
+                    const h = Math.round((Number(row.v) / maxV) * 100);
+                    const bar = document.createElement('div');
+                    bar.className = 'flex-1 min-w-[8px] bg-indigo-500 rounded-t';
+                    bar.style.height = `${Math.max(4, h)}%`;
+                    bar.title = `${row.d}: ${row.v}`;
+                    chart.appendChild(bar);
+                });
+                if (!days.length) {
+                    chart.innerHTML = '<p class="text-sm text-gray-400">No view data for the last 30 days.</p>';
+                }
+
+                const list = document.getElementById('overviewLatestList');
+                list.innerHTML = (d.latest || [])
+                    .map(
+                        (r) => `
+                    <li class="px-4 py-3 flex justify-between gap-4">
+                        <span class="font-medium text-gray-900 truncate">${r.title}</span>
+                        <span class="text-gray-500 text-xs whitespace-nowrap">👍 ${r.upvotes} 👎 ${r.downvotes} 💬 ${r.comments}</span>
+                    </li>`
+                    )
+                    .join('');
+
+                if (grid) grid.classList.remove('hidden');
+                if (sec) sec.classList.remove('hidden');
+            } catch (e) {
+                Utils.Toast.showError(e.message);
+            } finally {
+                if (loading) loading.classList.add('hidden');
+            }
+        }
+
+        function renderProjectsCard() {
+            const card = document.getElementById('projectsListCard');
+            if (!card) return;
+            card.innerHTML = (projects || [])
+                .map((p) => {
+                    const isActive = p.id === currentProjectId;
+                    return `
+                <div class="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <p class="font-medium text-gray-900 truncate">${p.name}</p>
+                            ${isActive ? '<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Selected</span>' : ''}
+                        </div>
+                        <p class="text-xs text-gray-500 font-mono mt-0.5 break-all">${p.public_key}</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" class="proj-select-btn px-3 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50" data-project-id="${p.id}">Select</button>
+                        <button type="button" class="proj-copy-btn px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700" data-public-key="${p.public_key}">Copy key</button>
+                        <button type="button" class="proj-rename-btn px-3 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50 text-gray-600" data-project-id="${p.id}" data-project-name="${p.name}">Rename</button>
+                        <button type="button" class="proj-delete-btn px-3 py-2 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50" data-project-id="${p.id}" data-project-name="${p.name}">Delete</button>
+                    </div>
+                </div>`;
+                })
+                .join('');
+
+            card.querySelectorAll('.proj-select-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const pid = parseInt(btn.dataset.projectId, 10);
+                    const sel = document.getElementById('projectSelect');
+                    if (sel) sel.value = String(pid);
+                    currentProjectId = pid;
+                    localStorage.setItem('currentProjectId', String(pid));
+                    onProjectChange();
+                    renderProjectsCard();
+                });
+            });
+            card.querySelectorAll('.proj-copy-btn').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const key = btn.dataset.publicKey || '';
+                    try {
+                        await navigator.clipboard.writeText(key);
+                        Utils.Toast.showSuccess('Copied public key');
+                    } catch (e) {
+                        Utils.Toast.showError('Copy failed');
+                    }
+                });
+            });
+
+            card.querySelectorAll('.proj-rename-btn').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const pid = parseInt(btn.dataset.projectId, 10);
+                    const oldName = btn.dataset.projectName || '';
+                    const newName = window.prompt('Rename project', oldName);
+                    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+                    try {
+                        const res = await Utils.Api.apiRequest(`/admin/projects/${pid}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: newName.trim() })
+                        });
+                        await Utils.Api.handleApiResponse(res, 'Failed to rename project');
+                        Utils.Toast.showSuccess('Project renamed');
+                        await loadProjects();
+                    } catch (e) {
+                        Utils.Toast.showError(e.message);
+                    }
+                });
+            });
+
+            card.querySelectorAll('.proj-delete-btn').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const pid = parseInt(btn.dataset.projectId, 10);
+                    const name = btn.dataset.projectName || 'this project';
+                    if (!confirm(`Delete "${name}"? This permanently removes all its changelogs, comments, and votes.`)) return;
+                    try {
+                        const res = await Utils.Api.apiRequest(`/admin/projects/${pid}`, { method: 'DELETE' });
+                        await Utils.Api.handleApiResponse(res, 'Failed to delete project');
+                        Utils.Toast.showSuccess('Project deleted');
+                        await loadProjects();
+                    } catch (e) {
+                        Utils.Toast.showError(e.message);
+                    }
+                });
+            });
+        }
+
+        const NAV_URLS = { dashboard: '/dashboard', changelogs: '/releases', comments: '/comments', users: '/team', projects: '/projects' };
+        const PATH_NAV = { '/dashboard': 'dashboard', '/releases': 'changelogs', '/comments': 'comments', '/team': 'users', '/projects': 'projects' };
+
+        function navigateMain(panel, pushState = true) {
+            if (!currentUser) return;
+            if (!currentUser.is_admin && (panel === 'comments' || panel === 'users')) {
+                Utils.Toast.showError('Admin access required');
+                return;
+            }
+
+            const panels = ['dashboard', 'changelogs', 'comments', 'users', 'projects'];
+            panels.forEach((p) => {
+                const contentId =
+                    p === 'users'
+                        ? 'teamTabContent'
+                        : p === 'changelogs'
+                          ? 'changelogsTabContent'
+                          : p === 'projects'
+                            ? 'projectTabContent'
+                            : `${p}TabContent`;
+                const el = document.getElementById(contentId);
+                if (el) el.classList.add('hidden');
+            });
+            document.querySelectorAll('.main-nav-btn').forEach((btn) => {
+                btn.classList.remove('bg-indigo-50', 'text-indigo-700');
+                btn.classList.add('text-gray-700');
+                const i = btn.querySelector('i');
+                if (i) i.classList.remove('text-indigo-600');
+                if (i) i.classList.add('text-gray-500');
+            });
+
+            const map = {
+                dashboard: { content: 'dashboardTabContent', nav: 'dashboard' },
+                changelogs: { content: 'changelogsTabContent', nav: 'changelogs' },
+                comments: { content: 'commentsTabContent', nav: 'comments' },
+                users: { content: 'teamTabContent', nav: 'users' },
+                projects: { content: 'projectTabContent', nav: 'projects' }
+            };
+            const cfg = map[panel];
+            if (!cfg) return;
+
+            document.getElementById(cfg.content).classList.remove('hidden');
+            const activeBtn = document.querySelector(`[data-main-nav="${cfg.nav}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-indigo-50', 'text-indigo-700');
+                activeBtn.classList.remove('text-gray-700');
+                const ic = activeBtn.querySelector('i');
+                if (ic) {
+                    ic.classList.add('text-indigo-600');
+                    ic.classList.remove('text-gray-500');
+                }
+            }
+
+            if (pushState && NAV_URLS[panel]) {
+                history.pushState({ panel }, '', NAV_URLS[panel]);
+            }
+
+            if (panel === 'comments') loadComments();
+            if (panel === 'users') loadTeamMembers();
+            if (panel === 'projects') renderProjectsCard();
+            if (panel === 'dashboard') loadDashboardOverview();
+            if (panel === 'changelogs') loadChangelogs();
+        }
+
+        window.addEventListener('popstate', (e) => {
+            const panel = (e.state && e.state.panel) || PATH_NAV[window.location.pathname] || 'dashboard';
+            navigateMain(panel, false);
+        });
 
         // Authentication functions
         async function login(username, password) {
@@ -585,7 +971,7 @@
                 localStorage.setItem('token', data.token);
                 currentUser = data.user;
                 showDashboard();
-                loadChangelogs();
+                loadProjects();
             } catch (error) {
                 Utils.UI.showError(error.message);
             }
@@ -660,15 +1046,29 @@
         }
 
         async function loadChangelogs() {
+            if (!currentProjectId) return;
             try {
-                console.log('Loading changelogs...');
                 Utils.UI.showLoading('changelogsLoadingState', 'emptyState', 'changelogsTable');
                 const status = document.getElementById('statusFilter').value;
-                console.log('Making API request to:', `/admin/changelogs?status=${status}&page=${currentPage}&limit=10`);
-                const response = await Utils.Api.apiRequest(`/admin/changelogs?status=${status}&page=${currentPage}&limit=10`);
-                console.log('API response:', response);
+                const q = (document.getElementById('changelogSearchTitle')?.value || '').trim();
+                const author = (document.getElementById('changelogSearchAuthor')?.value || '').trim();
+                const release_from = document.getElementById('changelogReleaseFrom')?.value || '';
+                const release_to = document.getElementById('changelogReleaseTo')?.value || '';
+                const has_images = document.getElementById('changelogHasImages')?.value ?? '';
+                const sp = new URLSearchParams({
+                    projectId: String(currentProjectId),
+                    status,
+                    page: String(currentPage),
+                    limit: '10'
+                });
+                if (q) sp.set('q', q);
+                if (author) sp.set('author', author);
+                if (release_from) sp.set('release_from', release_from);
+                if (release_to) sp.set('release_to', release_to);
+                if (has_images !== '') sp.set('has_images', has_images);
+
+                const response = await Utils.Api.apiRequest(`/admin/changelogs?${sp.toString()}`);
                 const data = await Utils.Api.handleApiResponse(response, 'Failed to load changelogs');
-                console.log('API data:', data);
 
                 changelogs = data.changelogs;
                 totalPages = data.pagination.pages;
@@ -747,38 +1147,26 @@
                     </div>
                 </li>
             `).join('');
-            
-            // Add event delegation for button clicks
-            addChangelogEventListeners();
         }
-        
-        function addChangelogEventListeners() {
+
+        function bindChangelogTableDelegationOnce() {
             const table = document.getElementById('changelogsTable');
-            
-            // Edit button clicks
+            if (!table || table.dataset.delegationBound === '1') return;
+            table.dataset.delegationBound = '1';
             table.addEventListener('click', (e) => {
-                if (e.target.closest('.edit-btn')) {
-                    const btn = e.target.closest('.edit-btn');
-                    const changelogId = parseInt(btn.dataset.changelogId);
-                    editChangelog(changelogId);
+                const editBtn = e.target.closest('.edit-btn');
+                if (editBtn) {
+                    editChangelog(parseInt(editBtn.dataset.changelogId, 10));
+                    return;
                 }
-            });
-            
-            // Publish button clicks
-            table.addEventListener('click', (e) => {
-                if (e.target.closest('.publish-btn')) {
-                    const btn = e.target.closest('.publish-btn');
-                    const changelogId = parseInt(btn.dataset.changelogId);
-                    publishChangelog(changelogId);
+                const pubBtn = e.target.closest('.publish-btn');
+                if (pubBtn) {
+                    publishChangelog(parseInt(pubBtn.dataset.changelogId, 10));
+                    return;
                 }
-            });
-            
-            // Delete button clicks
-            table.addEventListener('click', (e) => {
-                if (e.target.closest('.delete-btn')) {
-                    const btn = e.target.closest('.delete-btn');
-                    const changelogId = parseInt(btn.dataset.changelogId);
-                    deleteChangelog(changelogId);
+                const delBtn = e.target.closest('.delete-btn');
+                if (delBtn) {
+                    deleteChangelog(parseInt(delBtn.dataset.changelogId, 10));
                 }
             });
         }
@@ -834,12 +1222,15 @@
             const method = changelogId ? 'PUT' : 'POST';
 
             try {
+                if (!changelogId && currentProjectId) {
+                    formData.append('projectId', String(currentProjectId));
+                }
                 const response = await Utils.Api.apiRequest(url, {
                     method,
                     body: formData
                 });
 
-                const data = await Utils.Api.handleApiResponse(response, 'Failed to save changelog');
+                await Utils.Api.handleApiResponse(response, 'Failed to save changelog');
 
                 hideModal();
                 Utils.Toast.showSuccess(changelogId ? 'Changelog updated successfully!' : 'Changelog created successfully!');
@@ -982,8 +1373,6 @@
             window.location.href = '/login';
         });
 
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-
         document.getElementById('copyEmbedBtn').addEventListener('click', async () => {
             const ta = document.getElementById('embedSnippet');
             try {
@@ -1034,10 +1423,63 @@
             loadChangelogs();
         });
 
-        // Change Password functionality
-        document.getElementById('changePasswordBtn').addEventListener('click', () => {
+        document.getElementById('changelogSearchBtn').addEventListener('click', () => {
+            currentPage = 1;
+            loadChangelogs();
+        });
+
+        document.getElementById('projectSelect').addEventListener('change', onProjectChange);
+
+        async function createProjectFromPrompt() {
+            const name = window.prompt('Project name');
+            if (!name || !name.trim()) return;
+            try {
+                const res = await Utils.Api.apiRequest('/admin/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name.trim() })
+                });
+                const data = await Utils.Api.handleApiResponse(res, 'Failed to create project');
+                Utils.Toast.showSuccess('Project created');
+                if (data.project) {
+                    localStorage.setItem('currentProjectId', String(data.project.id));
+                }
+                await loadProjects();
+            } catch (e) {
+                Utils.Toast.showError(e.message);
+            }
+        }
+
+        document.getElementById('newProjectBtn').addEventListener('click', createProjectFromPrompt);
+
+        document.querySelectorAll('.main-nav-btn').forEach((btn) => {
+            btn.addEventListener('click', () => navigateMain(btn.dataset.mainNav));
+        });
+
+        function closeProfileMenu() {
+            const m = document.getElementById('profileMenu');
+            if (m) m.classList.add('hidden');
+        }
+
+        function toggleProfileMenu() {
+            const m = document.getElementById('profileMenu');
+            if (!m) return;
+            m.classList.toggle('hidden');
+        }
+
+        document.getElementById('profileMenuBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleProfileMenu();
+        });
+        document.getElementById('profileChangePasswordBtn').addEventListener('click', () => {
+            closeProfileMenu();
             showChangePasswordModal();
         });
+        document.getElementById('profileLogoutBtn').addEventListener('click', () => {
+            closeProfileMenu();
+            logout();
+        });
+        document.addEventListener('click', closeProfileMenu);
 
         document.getElementById('closeChangePasswordModal').addEventListener('click', hideChangePasswordModal);
         document.getElementById('cancelChangePasswordBtn').addEventListener('click', hideChangePasswordModal);
@@ -1069,131 +1511,230 @@
         let commentsTotalPages = 1;
         let comments = [];
 
-        // Tab switching
-        document.getElementById('changelogsTab').addEventListener('click', () => {
-            switchTab('changelogs');
-        });
-
-        document.getElementById('commentsTab').addEventListener('click', () => {
-            switchTab('comments');
-        });
-
-        function switchTab(tab) {
-            if (tab === 'changelogs') {
-                document.getElementById('changelogsTab').classList.add('border-indigo-500', 'text-indigo-600');
-                document.getElementById('changelogsTab').classList.remove('border-transparent', 'text-gray-500');
-                document.getElementById('commentsTab').classList.remove('border-indigo-500', 'text-indigo-600');
-                document.getElementById('commentsTab').classList.add('border-transparent', 'text-gray-500');
-                document.getElementById('changelogsTabContent').classList.remove('hidden');
-                document.getElementById('commentsTabContent').classList.add('hidden');
-            } else {
-                document.getElementById('commentsTab').classList.add('border-indigo-500', 'text-indigo-600');
-                document.getElementById('commentsTab').classList.remove('border-transparent', 'text-gray-500');
-                document.getElementById('changelogsTab').classList.remove('border-indigo-500', 'text-indigo-600');
-                document.getElementById('changelogsTab').classList.add('border-transparent', 'text-gray-500');
-                document.getElementById('commentsTabContent').classList.remove('hidden');
-                document.getElementById('changelogsTabContent').classList.add('hidden');
-                loadComments();
-            }
+        function escH(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
+        function humanDateShort(raw) {
+            if (!raw) return '';
+            try {
+                const d = new Date(raw), now = new Date();
+                const diff = Math.floor((now - d) / 1000);
+                if (diff < 60) return 'just now';
+                if (diff < 3600) return Math.floor(diff/60) + 'm';
+                if (diff < 86400) return Math.floor(diff/3600) + 'h';
+                if (diff < 86400*7) return Math.floor(diff/86400) + 'd';
+                return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+            } catch(_) { return String(raw).slice(0,10); }
+        }
+
+        let activeChangelogId = null;
+        let activeReplyToId = null;
+        let activeReplyToName = null;
 
         async function loadComments() {
             try {
-                showCommentsLoading();
+                document.getElementById('commentsLoadingState').classList.remove('hidden');
+                document.getElementById('commentsEmptyState').classList.add('hidden');
+                document.getElementById('commentsLeftList').classList.add('hidden');
                 const status = document.getElementById('commentStatusFilter').value;
-                const response = await apiRequest(`/admin/comments?status=${status}&page=${commentsCurrentPage}&limit=20`);
+                const pidQ = currentProjectId ? `&projectId=${encodeURIComponent(currentProjectId)}` : '';
+                const response = await apiRequest(`/admin/comments?status=${status}&page=1&limit=200${pidQ}`);
                 const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to load comments');
-                }
-
+                if (!response.ok) throw new Error(data.error || 'Failed to load comments');
                 comments = data.comments;
-                commentsTotalPages = data.pagination.pages;
-                renderComments();
-                renderCommentsPagination(data.pagination);
+                renderCommentsSplitView();
             } catch (error) {
                 console.error('Error loading comments:', error);
                 Utils.Toast.showError(error.message);
             } finally {
-                hideCommentsLoading();
+                document.getElementById('commentsLoadingState').classList.add('hidden');
             }
         }
 
-        function showCommentsLoading() {
-            document.getElementById('commentsLoadingState').classList.remove('hidden');
-            document.getElementById('commentsEmptyState').classList.add('hidden');
-            document.getElementById('commentsTable').classList.add('hidden');
-        }
-
-        function hideCommentsLoading() {
-            document.getElementById('commentsLoadingState').classList.add('hidden');
-        }
-
-        function renderComments() {
-            const table = document.getElementById('commentsTable');
+        function renderCommentsSplitView() {
+            const leftList = document.getElementById('commentsLeftList');
             const emptyState = document.getElementById('commentsEmptyState');
+            const byChangelog = {};
+            for (const c of comments) {
+                const cid = c.changelog_id;
+                if (!byChangelog[cid]) byChangelog[cid] = { title: c.changelog_title, label: c.changelog_label, body: c.changelog_body, id: cid, items: [] };
+                byChangelog[cid].items.push(c);
+            }
+            const groups = Object.values(byChangelog).map(g => {
+                g.items.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                return g;
+            }).sort((a, b) => {
+                const aLast = new Date(a.items[a.items.length - 1].created_at);
+                const bLast = new Date(b.items[b.items.length - 1].created_at);
+                return bLast - aLast;
+            });
 
-            if (comments.length === 0) {
-                table.classList.add('hidden');
+            if (!groups.length) {
+                leftList.classList.add('hidden');
                 emptyState.classList.remove('hidden');
+                document.getElementById('commentsRightEmpty').style.display = 'flex';
+                document.getElementById('commentsThread').style.display = 'none';
                 return;
             }
-
-            table.classList.remove('hidden');
             emptyState.classList.add('hidden');
+            leftList.classList.remove('hidden');
 
-            table.innerHTML = comments.map(comment => `
-                <li class="px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center space-x-3">
-                                <div class="flex-shrink-0">
-                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                        <i class="fas fa-user text-indigo-600"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center space-x-2">
-                                        <p class="text-sm font-medium text-gray-900">${comment.author_name}</p>
-                                        <span class="text-sm text-gray-500">${comment.author_email || 'No email'}</span>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${comment.is_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                                            ${comment.is_approved ? 'Approved' : 'Pending'}
-                                        </span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">${comment.content}</p>
-                                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                                        <span>Changelog: ${comment.changelog_title || 'Unknown'}</span>
-                                        <span>${formatDate(comment.created_at)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            ${!comment.is_approved ? `
-                                <button data-action="approve" data-comment-id="${comment.id}" 
-                                        class="text-green-600 hover:text-green-800 text-sm font-medium">
-                                    <i class="fas fa-check mr-1"></i>Approve
-                                </button>
-                            ` : ''}
-                            <button data-action="delete" data-comment-id="${comment.id}" 
-                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
-                                <i class="fas fa-trash mr-1"></i>Delete
-                            </button>
-                        </div>
+            leftList.innerHTML = groups.map(g => {
+                const pending = g.items.filter(c => !c.is_approved).length;
+                const last = g.items[g.items.length - 1];
+                return `<div class="cl-item${g.id === activeChangelogId ? ' active' : ''}" data-clid="${g.id}">
+                    <div class="cl-item-title">${escH(g.title)}</div>
+                    <div class="cl-item-meta">
+                        <span>${g.items.length} comment${g.items.length !== 1 ? 's' : ''}</span>
+                        ${pending ? `<span class="cl-badge cl-badge-pending">${pending} pending</span>` : ''}
+                        <span style="margin-left:auto">${humanDateShort(last.created_at)}</span>
                     </div>
-                </li>
-            `).join('');
+                </div>`;
+            }).join('');
+
+            leftList.querySelectorAll('.cl-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const cid = parseInt(el.dataset.clid, 10);
+                    openCommentThread(cid, byChangelog[cid]);
+                    leftList.querySelectorAll('.cl-item').forEach(x => x.classList.remove('active'));
+                    el.classList.add('active');
+                });
+            });
+            if (activeChangelogId && byChangelog[activeChangelogId]) {
+                openCommentThread(activeChangelogId, byChangelog[activeChangelogId]);
+            }
         }
+
+        function openCommentThread(changelogId, group) {
+            activeChangelogId = changelogId;
+            document.getElementById('commentsRightEmpty').style.display = 'none';
+            const thread = document.getElementById('commentsThread');
+            thread.style.display = 'flex';
+            document.getElementById('commentsThreadTitle').textContent = group.title || 'Release note';
+            document.getElementById('commentsThreadMeta').textContent = `${group.items.length} comment${group.items.length !== 1 ? 's' : ''}`;
+
+            const cardEl = document.getElementById('commentsThreadReleaseCard');
+            const bodyText = String(group.body || '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0, 200);
+            const labelColors = { feature:'background:#eff6ff;color:#1d4ed8', bug:'background:#fef2f2;color:#b91c1c', upcoming:'background:#f0fdf4;color:#15803d' };
+            const labelStyle = labelColors[String(group.label||'').toLowerCase()] || 'background:#f3f4f6;color:#374151';
+            cardEl.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1;min-width:0">
+                ${group.label ? `<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font:700 10px/1.4 system-ui;${labelStyle};margin-bottom:6px">${escH(group.label)}</span>` : ''}
+                <p style="font:600 13px/1.3 system-ui;color:#111827;margin:0 0 4px 0">${escH(group.title)}</p>
+                ${bodyText ? `<p style="font:400 12px/1.5 system-ui;color:#6b7280;margin:0">${escH(bodyText)}${(group.body||'').length > 200 ? '…' : ''}</p>` : ''}
+            </div></div>`;
+
+            const commentMap = {};
+            group.items.forEach(c => { commentMap[c.id] = c; });
+
+            const threadBody = document.getElementById('commentsThreadBody');
+            threadBody.innerHTML = group.items.map(c => {
+                const isAdmin = Number(c.author_is_admin) === 1;
+                const adminBadge = isAdmin ? `<span style="font:700 9px/1 system-ui;background:#eef2ff;color:#4f46e5;padding:1px 5px;border-radius:4px">admin</span>` : '';
+                const statusBadge = c.is_approved
+                    ? `<span class="cl-badge cl-badge-approved">approved</span>`
+                    : `<span class="cl-badge cl-badge-pending">pending</span>`;
+                const parent = c.parent_id ? commentMap[c.parent_id] : null;
+                const replyQuote = parent
+                    ? `<div style="background:#e8edf5;border-left:3px solid #818cf8;border-radius:6px;padding:4px 8px;margin-bottom:5px;font:400 11px/1.4 system-ui;color:#4b5563;">
+                        <strong>${escH(parent.author_name||'user')}</strong>: ${escH(String(parent.content||'').slice(0,60))}${parent.content && parent.content.length > 60 ? '…' : ''}
+                       </div>`
+                    : '';
+                const indent = c.parent_id ? 'margin-left:20px;' : '';
+                return `<div class="chat-bubble-wrap" style="${indent}">
+                    <div class="chat-bubble-meta">${escH(c.author_name||'Anonymous')} ${adminBadge} · ${humanDateShort(c.created_at)} ${statusBadge}</div>
+                    <div class="chat-bubble chat-bubble-in${isAdmin?' admin-bubble':''}">${replyQuote}${escH(c.content).replace(/\n/g,'<br/>')}</div>
+                    <div class="chat-bubble-actions">
+                        <button class="chat-action-btn" data-action="reply" data-comment-id="${c.id}" data-author="${escH(c.author_name||'Anonymous')}"><i class="fas fa-reply" style="margin-right:3px"></i>Reply</button>
+                        ${!c.is_approved ? `<button class="chat-action-btn" data-action="approve" data-comment-id="${c.id}"><i class="fas fa-check" style="margin-right:3px"></i>Approve</button>` : ''}
+                        <button class="chat-action-btn chat-action-delete" data-action="delete" data-comment-id="${c.id}"><i class="fas fa-trash" style="margin-right:3px"></i>Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
+            threadBody.scrollTop = threadBody.scrollHeight;
+
+            // Show reply footer and reset input + reply context
+            const footer = document.getElementById('commentsThreadFooter');
+            footer.style.display = 'block';
+            const replyInput = document.getElementById('commentsReplyInput');
+            replyInput.value = '';
+            replyInput.style.height = 'auto';
+            activeReplyToId = null;
+            activeReplyToName = null;
+            document.getElementById('commentsReplyContext').style.display = 'none';
+        }
+
+        // Auto-expand textarea
+        document.getElementById('commentsReplyInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Send on Enter (Shift+Enter = newline)
+        document.getElementById('commentsReplyInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAdminReply();
+            }
+        });
+
+        document.getElementById('commentsReplySendBtn').addEventListener('click', sendAdminReply);
+
+        async function sendAdminReply() {
+            const input = document.getElementById('commentsReplyInput');
+            const content = input.value.trim();
+            if (!content || !activeChangelogId) return;
+            const btn = document.getElementById('commentsReplySendBtn');
+            btn.disabled = true;
+            try {
+                const body = { content };
+                if (activeReplyToId) body.parent_id = activeReplyToId;
+                const response = await apiRequest(`/admin/changelogs/${activeChangelogId}/comments`, {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Failed to send');
+                input.value = '';
+                input.style.height = 'auto';
+                activeReplyToId = null;
+                activeReplyToName = null;
+                document.getElementById('commentsReplyContext').style.display = 'none';
+                await loadComments(); // renderCommentsSplitView re-opens the active thread automatically
+            } catch (err) {
+                Utils.Toast.showError(err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        document.getElementById('commentsThreadBody').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const commentId = parseInt(btn.dataset.commentId, 10);
+            if (btn.dataset.action === 'reply') {
+                activeReplyToId = commentId;
+                activeReplyToName = btn.dataset.author || 'user';
+                const ctx = document.getElementById('commentsReplyContext');
+                document.getElementById('commentsReplyContextLabel').textContent = `Replying to ${activeReplyToName}`;
+                ctx.style.display = 'flex';
+                document.getElementById('commentsReplyInput').focus();
+            } else if (btn.dataset.action === 'approve') {
+                approveComment(commentId);
+            } else if (btn.dataset.action === 'delete') {
+                deleteComment(commentId);
+            }
+        });
+
+        document.getElementById('commentsReplyCancelBtn').addEventListener('click', () => {
+            activeReplyToId = null;
+            activeReplyToName = null;
+            document.getElementById('commentsReplyContext').style.display = 'none';
+        });
 
         function renderCommentsPagination(pagination) {
             const paginationDiv = document.getElementById('commentsPagination');
-            if (commentsTotalPages <= 1) {
-                paginationDiv.classList.add('hidden');
-                return;
-            }
-
-            paginationDiv.classList.remove('hidden');
+            if (!paginationDiv) return;
+            paginationDiv.classList.add('hidden');
 
             // Update pagination info
             const startItem = ((pagination.page - 1) * pagination.limit) + 1;
@@ -1220,6 +1761,23 @@
                     loadComments();
                 };
                 pageNumbers.appendChild(button);
+            }
+        }
+
+        async function postStaffReply(changelogId, parentId, content) {
+            try {
+                const response = await apiRequest(`/admin/changelogs/${changelogId}/comments/reply`, {
+                    method: 'POST',
+                    body: JSON.stringify({ parent_id: parentId, content })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to post reply');
+                }
+                Utils.Toast.showSuccess(data.message || 'Reply posted');
+                loadComments();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
             }
         }
 
@@ -1271,11 +1829,33 @@
 
         // Event delegation for comment actions
         document.getElementById('commentsTable').addEventListener('click', (e) => {
+            const toggleReply = e.target.closest('button[data-action="toggle-reply"]');
+            if (toggleReply) {
+                const rid = toggleReply.getAttribute('data-comment-id');
+                const panel = document.querySelector(`[data-reply-panel="${rid}"]`);
+                if (panel) panel.classList.toggle('hidden');
+                return;
+            }
+
+            const postReply = e.target.closest('button[data-action="post-reply"]');
+            if (postReply) {
+                const cid = parseInt(postReply.getAttribute('data-changelog-id'), 10);
+                const pid = parseInt(postReply.getAttribute('data-parent-id'), 10);
+                const panel = postReply.closest('[data-reply-panel]');
+                const body = (panel && panel.querySelector('.reply-body') && panel.querySelector('.reply-body').value || '').trim();
+                if (!body) {
+                    Utils.Toast.showError('Enter reply text');
+                    return;
+                }
+                postStaffReply(cid, pid, body);
+                return;
+            }
+
             const button = e.target.closest('button[data-action]');
             if (!button) return;
 
             const action = button.dataset.action;
-            const commentId = parseInt(button.dataset.commentId);
+            const commentId = parseInt(button.dataset.commentId, 10);
 
             if (action === 'approve') {
                 approveComment(commentId);
@@ -1289,51 +1869,13 @@
         let teamTotalPages = 1;
         let teamMembers = [];
 
-        // Team tab click handler
-        document.getElementById('teamTab').addEventListener('click', () => {
-            switchTab('team');
-        });
-
-        // Update switchTab function to include team tab and role-based access
-        function switchTab(tab) {
-            // Check if user has access to this tab
-            if (!currentUser.is_admin && (tab === 'comments' || tab === 'team')) {
-                Utils.Toast.showError('Admin access required for this feature');
-                return;
-            }
-
-            // Reset all tabs
-            const tabs = ['changelogs', 'comments', 'team'];
-            tabs.forEach(t => {
-                const tabElement = document.getElementById(`${t}Tab`);
-                const contentElement = document.getElementById(`${t}TabContent`);
-                
-                tabElement.classList.remove('border-indigo-500', 'text-indigo-600');
-                tabElement.classList.add('border-transparent', 'text-gray-500');
-                contentElement.classList.add('hidden');
-            });
-
-            // Activate selected tab
-            const selectedTab = document.getElementById(`${tab}Tab`);
-            const selectedContent = document.getElementById(`${tab}TabContent`);
-            
-            selectedTab.classList.add('border-indigo-500', 'text-indigo-600');
-            selectedTab.classList.remove('border-transparent', 'text-gray-500');
-            selectedContent.classList.remove('hidden');
-
-            // Load content based on tab
-            if (tab === 'comments') {
-                loadComments();
-            } else if (tab === 'team') {
-                loadTeamMembers();
-            }
-        }
-
         async function loadTeamMembers() {
             try {
                 showTeamLoading();
                 const role = document.getElementById('teamRoleFilter').value;
-                const response = await apiRequest(`/admin/users?role=${role}&page=${teamCurrentPage}&limit=10`);
+                const response = await apiRequest(
+                    `/admin/users?role=${role}&page=${teamCurrentPage}&limit=10&scope=team`
+                );
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -1462,6 +2004,7 @@
             const idField = document.getElementById('teamMemberId');
             const passwordField = document.getElementById('teamPassword');
 
+            const hint = document.getElementById('teamProjectHint');
             if (member) {
                 title.textContent = 'Edit Team Member';
                 idField.value = member.id;
@@ -1470,12 +2013,20 @@
                 document.getElementById('teamRole').value = member.is_admin ? 'admin' : 'user';
                 passwordField.required = false;
                 passwordField.placeholder = 'Leave blank to keep current password';
+                if (hint) hint.classList.add('hidden');
             } else {
                 title.textContent = 'Add Team Member';
                 form.reset();
                 idField.value = '';
                 passwordField.required = true;
                 passwordField.placeholder = 'Enter password';
+                if (hint) {
+                    const p = projects.find((x) => x.id === currentProjectId);
+                    hint.textContent = p
+                        ? `New user will be invited to project: ${p.name}`
+                        : 'Choose a project in the header before inviting someone.';
+                    hint.classList.remove('hidden');
+                }
             }
 
             modal.classList.remove('hidden');
@@ -1556,6 +2107,15 @@
                 delete formData.password;
             }
 
+            const memberId = document.getElementById('teamMemberId').value;
+            if (!memberId) {
+                if (!currentProjectId) {
+                    Utils.Toast.showError('Select a project in the header before inviting a team member.');
+                    return;
+                }
+                formData.project_id = currentProjectId;
+            }
+
             await saveTeamMember(formData);
         });
 
@@ -1604,14 +2164,23 @@
 
         function refreshEmbedSnippet() {
             const base = window.location.origin;
-            const url = `${base}/changelog`;
+            const p = projects.find((x) => x.id === currentProjectId);
+            const projectKey = p?.public_key || '';
+
+            const changelogUrl = `${base}/changelog${projectKey ? `?projectKey=${encodeURIComponent(projectKey)}` : ''}`;
+            const widgetSrc = `${base}/js/widget.js`;
+
             const lines = [
                 `<!-- Link to your public changelog -->`,
-                `<a href="${url}">View changelog</a>`,
+                `<a href="${changelogUrl}">View changelog</a>`,
                 ``,
-                `<!-- Optional: inline frame (set height to fit your layout) -->`,
-                `<iframe src="${url}" title="Changelog" style="width:100%;min-height:480px;border:1px solid #e5e7eb;border-radius:8px;"></iframe>`
+                `<!-- Widget embed (recommended) -->`,
+                `<script src="${widgetSrc}"><\/script>`,
+                `<script>`,
+                `  ReleaseWidget.init({ projectId: "${projectKey || 'YOUR_PUBLIC_KEY'}", triggerId: "release-btn", position: "right" });`,
+                `<\/script>`
             ];
+
             const el = document.getElementById('embedSnippet');
             if (el) el.value = lines.join('\n');
         }
@@ -1621,15 +2190,14 @@
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('unverifiedGate').classList.add('hidden');
             document.getElementById('adminDashboard').classList.remove('hidden');
-            refreshEmbedSnippet();
-            
+
             // Show role-based content
             if (currentUser && currentUser.is_admin) {
-                document.getElementById('currentUser').textContent = `Welcome, ${currentUser.username} (Admin)`;
+                document.getElementById('currentUser').textContent = currentUser.username;
                 // Show all admin-only elements
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
             } else if (currentUser) {
-                document.getElementById('currentUser').textContent = `Welcome, ${currentUser.username} (User)`;
+                document.getElementById('currentUser').textContent = currentUser.username;
                 // Hide admin-only elements
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
             }
@@ -1663,7 +2231,8 @@
                         return;
                     }
                     showDashboard();
-                    loadChangelogs();
+                    bindChangelogTableDelegationOnce();
+                    loadProjects();
                 } else {
                     console.log('No user in response, showing login');
                     localStorage.removeItem('token');
@@ -1678,4 +2247,3 @@
     </script>
 </body>
 </html> 
->>>>>>> Incoming (Background Agent changes)

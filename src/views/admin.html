@@ -101,18 +101,18 @@
             <div class="px-4 py-6 sm:px-0">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
-                        <button id="dashboardTab" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                        <a id="dashboardTab" href="/dashboard" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm cursor-pointer">
                             Dashboard
-                        </button>
-                        <button id="changelogsTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
-                            Changelogs
-                        </button>
-                        <button id="commentsTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
+                        </a>
+                        <a id="changelogsTab" href="/releases" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm cursor-pointer">
+                            Releases
+                        </a>
+                        <a id="commentsTab" href="/comments" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only cursor-pointer">
                             Comments
-                        </button>
-                        <button id="teamTab" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only">
+                        </a>
+                        <a id="teamTab" href="/team" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm admin-only cursor-pointer">
                             Team Members
-                        </button>
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -124,8 +124,10 @@
                         <label class="text-sm font-medium text-gray-700">Project</label>
                         <select id="projectSelectDash" class="border border-gray-300 rounded-md px-3 py-2 text-sm"></select>
                         <button type="button" id="newProjectBtn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ New project</button>
+                        <button type="button" id="renameProjectBtn" class="text-sm text-gray-500 hover:text-gray-700 font-medium hidden admin-only">Rename</button>
+                        <button type="button" id="deleteProjectBtn" class="text-sm text-red-500 hover:text-red-700 font-medium hidden admin-only">Delete</button>
                     </div>
-                    <p id="embedKeyDisplayDash" class="text-xs text-gray-500 font-mono break-all"></p>
+                    <p id="embedKeyDisplayDash" class="hidden text-xs text-gray-500 font-mono break-all"></p>
                     <div id="dashboardLoading" class="text-gray-500 text-sm">Loading stats…</div>
                     <div id="dashboardGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="rounded-2xl p-6 text-white shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600">
@@ -205,7 +207,8 @@
                     <div class="mt-3 flex flex-wrap items-center gap-3">
                         <label class="text-sm text-gray-600">Project</label>
                         <select id="projectSelect" class="border border-gray-300 rounded-md px-3 py-2 text-sm"></select>
-                        <span id="embedKeyDisplay" class="text-xs text-gray-500 font-mono break-all max-w-xl"></span>
+                        <button type="button" id="renameProjectBtnChangelogs" class="text-sm text-gray-500 hover:text-gray-700 font-medium hidden admin-only">Rename</button>
+                        <button type="button" id="deleteProjectBtnChangelogs" class="text-sm text-red-500 hover:text-red-700 font-medium hidden admin-only">Delete</button>
                     </div>
 
                     <!-- Filters -->
@@ -267,71 +270,89 @@
             </div>
         </div>
 
-            <!-- Comments Tab Content -->
+            <!-- Comments Tab Content — WhatsApp-style split view -->
             <div id="commentsTabContent" class="hidden">
-                <!-- Header -->
-                <div class="px-4 py-6 sm:px-0">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-900">Comments</h2>
-                    </div>
+                <style>
+                    #commentsSplitView { display: flex; height: calc(100vh - 200px); min-height: 520px; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; }
+                    #commentsLeftPanel { width: 340px; flex-shrink: 0; background: #f9fafb; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; }
+                    #commentsRightPanel { flex: 1; display: flex; flex-direction: column; background: #fff; }
+                    #commentsLeftHeader { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+                    #commentsLeftList { flex: 1; overflow-y: auto; }
+                    .cl-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 100ms; }
+                    .cl-item:hover, .cl-item.active { background: #eff6ff; }
+                    .cl-item.active { border-left: 3px solid #4f46e5; }
+                    .cl-item-title { font: 600 13px/1.3 system-ui; color: #111827; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .cl-item-meta { font: 500 11px/1 system-ui; color: #6b7280; display: flex; gap: 8px; align-items: center; }
+                    .cl-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; font: 700 10px/1 system-ui; }
+                    .cl-badge-pending { background: #fef3c7; color: #92400e; }
+                    .cl-badge-approved { background: #d1fae5; color: #065f46; }
+                    #commentsRightEmpty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: #9ca3af; }
+                    #commentsRightEmpty i { font-size: 40px; }
+                    #commentsThread { display: none; flex-direction: column; height: 100%; }
+                    #commentsThreadHeader { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; background: #fff; flex-shrink: 0; }
+                    #commentsThreadReleaseCard { padding: 14px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; max-height: 160px; overflow-y: auto; }
+                    #commentsThreadBody { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; background: #f0f4f8; }
+                    .chat-bubble-wrap { display: flex; flex-direction: column; }
+                    .chat-bubble { max-width: 75%; padding: 9px 13px; border-radius: 14px; font: 400 13px/1.5 system-ui; }
+                    .chat-bubble-in { background: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; align-self: flex-start; }
+                    .chat-bubble-in.admin-bubble { background: #eef2ff; border-color: #c7d2fe; }
+                    .chat-bubble-meta { font: 600 10px/1 system-ui; color: #9ca3af; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+                    .chat-bubble-meta.right { justify-content: flex-end; }
+                    .chat-bubble-actions { display: flex; gap: 8px; margin-top: 4px; }
+                    .chat-action-btn { font: 600 10px/1 system-ui; padding: 3px 8px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; color: #374151; }
+                    .chat-action-btn:hover { background: #f3f4f6; }
+                    .chat-action-delete { color: #ef4444; border-color: #fecaca; }
+                    .chat-action-delete:hover { background: #fef2f2; }
+                </style>
 
-                    <!-- Filters -->
-                    <div class="mt-4 flex space-x-4">
-                        <select id="commentStatusFilter" class="border border-gray-300 rounded-md px-3 py-2">
-                            <option value="all">All Comments</option>
+                <!-- Header with filter -->
+                <div class="px-4 pt-6 pb-3 sm:px-0 flex items-center justify-between flex-wrap gap-3">
+                    <h2 class="text-2xl font-bold text-gray-900">Comments</h2>
+                    <div class="flex gap-3">
+                        <select id="commentStatusFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                            <option value="all">All</option>
                             <option value="approved">Approved</option>
                             <option value="pending">Pending</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Comments List -->
-                <div id="commentsList" class="bg-white shadow overflow-hidden sm:rounded-md">
-                    <!-- Loading state -->
-                    <div id="commentsLoadingState" class="p-8 text-center">
-                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                        <p class="mt-2 text-gray-600">Loading comments...</p>
-                    </div>
-
-                    <!-- Empty state -->
-                    <div id="commentsEmptyState" class="hidden p-8 text-center">
-                        <i class="fas fa-comments text-4xl text-gray-400 mb-4"></i>
-                        <p class="text-gray-600">No comments found</p>
-                    </div>
-
-                    <!-- Comments table -->
-                    <ul id="commentsTable" class="hidden divide-y divide-gray-200"></ul>
-                </div>
-
-                <!-- Comments Pagination -->
-                <div id="commentsPagination" class="hidden mt-4 flex items-center justify-between">
-                    <div class="flex-1 flex justify-between sm:hidden">
-                        <button id="commentsPrevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            Previous
-                        </button>
-                        <button id="commentsNextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            Next
-                        </button>
-                    </div>
-                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-sm text-gray-700">
-                                Showing <span id="commentsStartItem">1</span> to <span id="commentsEndItem">20</span> of <span id="commentsTotalItems">0</span> results
-                            </p>
+                <!-- Split view -->
+                <div id="commentsSplitView">
+                    <!-- Left: release list -->
+                    <div id="commentsLeftPanel">
+                        <div id="commentsLeftHeader">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Release notes</p>
                         </div>
-                        <div>
-                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                <button id="commentsPrevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                    Previous
-                                </button>
-                                <div id="commentsPageNumbers" class="flex"></div>
-                                <button id="commentsNextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                    Next
-                                </button>
-                            </nav>
+                        <div id="commentsLoadingState" class="p-6 text-center text-gray-500 text-sm">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto mb-2"></div>Loading…
+                        </div>
+                        <div id="commentsEmptyState" class="hidden p-6 text-center text-gray-400 text-sm">
+                            <i class="fas fa-comments text-3xl mb-2 block"></i>No comments yet
+                        </div>
+                        <div id="commentsLeftList" class="hidden"></div>
+                    </div>
+
+                    <!-- Right: chat thread -->
+                    <div id="commentsRightPanel">
+                        <div id="commentsRightEmpty">
+                            <i class="fas fa-comment-dots"></i>
+                            <p class="text-sm font-medium">Select a release to view comments</p>
+                        </div>
+                        <div id="commentsThread">
+                            <div id="commentsThreadHeader">
+                                <p id="commentsThreadTitle" class="font-semibold text-gray-900 text-sm"></p>
+                                <p id="commentsThreadMeta" class="text-xs text-gray-400 mt-1"></p>
+                            </div>
+                            <div id="commentsThreadReleaseCard"></div>
+                            <div id="commentsThreadBody"></div>
                         </div>
                     </div>
                 </div>
+
+                <!-- hidden elements kept for JS compat (pagination unused in new UI) -->
+                <ul id="commentsTable" class="hidden"></ul>
+                <div id="commentsPagination" class="hidden"></div>
             </div>
 
         <!-- Team Members Tab Content -->
@@ -403,6 +424,27 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Rename Project Modal -->
+    <div id="renameProjectModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-40 mx-auto p-6 border w-full max-w-sm shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Rename Project</h3>
+                <button id="closeRenameModal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="renameProjectForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project name</label>
+                    <input type="text" id="renameProjectInput" maxlength="255" required
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancelRenameBtn" class="px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -606,6 +648,15 @@
                         <p class="mt-1 text-sm text-gray-500">Admins can manage changelogs, comments, and team members</p>
                     </div>
 
+                    <div id="teamProjectAccess" class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Project Access</label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="teamAllProjects" checked class="rounded border-gray-300 text-indigo-600"/>
+                            Allow all projects
+                        </label>
+                        <div id="teamProjectList" class="hidden space-y-1 pl-2 border-l-2 border-gray-200 ml-1 mt-1"></div>
+                    </div>
+
                     <div id="teamMemberError" class="hidden text-red-600 text-sm"></div>
 
                     <div class="flex justify-end space-x-3 pt-4">
@@ -690,13 +741,12 @@
                 projects = data.projects || [];
                 if (!projects.length) {
                     Utils.Toast.showInfo('Create a project from the dashboard (+ New project) to continue.');
-                    switchTab('dashboard');
+                    switchTab('dashboard', false);
                     return;
                 }
                 syncProjectSelects();
-                switchTab('dashboard');
-                await loadDashboardStats();
-                loadChangelogs();
+                const initialTab = PATH_TABS[window.location.pathname] || 'dashboard';
+                switchTab(initialTab, false);
             } catch (error) {
                 Utils.Toast.showError(error.message);
             }
@@ -1162,6 +1212,56 @@
             }
         });
 
+        async function deleteCurrentProject() {
+            const p = projects.find((x) => x.id === currentProjectId);
+            if (!p) return;
+            if (!confirm(`Delete project "${p.name}"? This will permanently delete all its changelogs, comments, and votes.`)) return;
+            try {
+                const response = await Utils.Api.apiRequest(`/admin/projects/${p.id}`, { method: 'DELETE' });
+                await Utils.Api.handleApiResponse(response, 'Failed to delete project');
+                Utils.Toast.showSuccess('Project deleted');
+                await loadProjects();
+            } catch (err) {
+                Utils.Toast.showError(err.message);
+            }
+        }
+        document.getElementById('deleteProjectBtn').addEventListener('click', deleteCurrentProject);
+        document.getElementById('deleteProjectBtnChangelogs').addEventListener('click', deleteCurrentProject);
+
+        function showRenameModal() {
+            const p = projects.find((x) => x.id === currentProjectId);
+            if (!p) return;
+            document.getElementById('renameProjectInput').value = p.name;
+            document.getElementById('renameProjectModal').classList.remove('hidden');
+            document.getElementById('renameProjectInput').focus();
+        }
+        function hideRenameModal() {
+            document.getElementById('renameProjectModal').classList.add('hidden');
+        }
+        document.getElementById('renameProjectBtn').addEventListener('click', showRenameModal);
+        document.getElementById('renameProjectBtnChangelogs').addEventListener('click', showRenameModal);
+        document.getElementById('closeRenameModal').addEventListener('click', hideRenameModal);
+        document.getElementById('cancelRenameBtn').addEventListener('click', hideRenameModal);
+
+        document.getElementById('renameProjectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('renameProjectInput').value.trim();
+            if (!name) return;
+            try {
+                const response = await Utils.Api.apiRequest(`/admin/projects/${currentProjectId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                await Utils.Api.handleApiResponse(response, 'Failed to rename project');
+                hideRenameModal();
+                Utils.Toast.showSuccess('Project renamed');
+                await loadProjects();
+            } catch (err) {
+                Utils.Toast.showError(err.message);
+            }
+        });
+
         document.getElementById('newChangelogBtn').addEventListener('click', () => {
             showModal();
             setTimeout(initRichTextEditor, 100);
@@ -1238,202 +1338,193 @@
         let commentsTotalPages = 1;
         let comments = [];
 
-        document.getElementById('dashboardTab').addEventListener('click', () => {
+        document.getElementById('dashboardTab').addEventListener('click', (e) => {
+            e.preventDefault();
             switchTab('dashboard');
         });
-        document.getElementById('changelogsTab').addEventListener('click', () => {
+        document.getElementById('changelogsTab').addEventListener('click', (e) => {
+            e.preventDefault();
             switchTab('changelogs');
         });
 
-        document.getElementById('commentsTab').addEventListener('click', () => {
+        document.getElementById('commentsTab').addEventListener('click', (e) => {
+            e.preventDefault();
             switchTab('comments');
         });
 
         async function loadComments() {
             try {
-                showCommentsLoading();
+                // split-view: load all comments (higher limit), group by changelog
                 const status = document.getElementById('commentStatusFilter').value;
-                const response = await apiRequest(`/admin/comments?status=${status}&page=${commentsCurrentPage}&limit=20`);
+                const response = await apiRequest(`/admin/comments?status=${status}&page=1&limit=200`);
                 const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to load comments');
-                }
-
+                if (!response.ok) throw new Error(data.error || 'Failed to load comments');
                 comments = data.comments;
-                commentsTotalPages = data.pagination.pages;
-                renderComments();
-                renderCommentsPagination(data.pagination);
+                renderCommentsSplitView();
             } catch (error) {
                 console.error('Error loading comments:', error);
                 Utils.Toast.showError(error.message);
             } finally {
-                hideCommentsLoading();
+                document.getElementById('commentsLoadingState').classList.add('hidden');
             }
         }
 
-        function showCommentsLoading() {
-            document.getElementById('commentsLoadingState').classList.remove('hidden');
-            document.getElementById('commentsEmptyState').classList.add('hidden');
-            document.getElementById('commentsTable').classList.add('hidden');
+        let activeChangelogId = null;
+
+        function escH(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
-        function hideCommentsLoading() {
-            document.getElementById('commentsLoadingState').classList.add('hidden');
+        function humanDateShort(raw) {
+            if (!raw) return '';
+            try {
+                const d = new Date(raw);
+                const now = new Date();
+                const diff = Math.floor((now - d) / 1000);
+                if (diff < 60) return 'just now';
+                if (diff < 3600) return Math.floor(diff/60) + 'm';
+                if (diff < 86400) return Math.floor(diff/3600) + 'h';
+                if (diff < 86400*7) return Math.floor(diff/86400) + 'd';
+                return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            } catch(_) { return String(raw).slice(0,10); }
         }
 
-        function renderComments() {
-            const table = document.getElementById('commentsTable');
+        function renderCommentsSplitView() {
+            const leftList = document.getElementById('commentsLeftList');
             const emptyState = document.getElementById('commentsEmptyState');
 
-            if (comments.length === 0) {
-                table.classList.add('hidden');
+            // Group comments by changelog, keep comments oldest→newest within each group
+            const byChangelog = {};
+            for (const c of comments) {
+                const cid = c.changelog_id;
+                if (!byChangelog[cid]) byChangelog[cid] = { title: c.changelog_title, label: c.changelog_label, body: c.changelog_body, id: cid, items: [] };
+                byChangelog[cid].items.push(c);
+            }
+            // Sort each group oldest→newest, then sort groups by most-recent comment descending
+            const groups = Object.values(byChangelog).map(g => {
+                g.items.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                return g;
+            }).sort((a, b) => {
+                const aLast = new Date(a.items[a.items.length - 1].created_at);
+                const bLast = new Date(b.items[b.items.length - 1].created_at);
+                return bLast - aLast;
+            });
+
+            if (!groups.length) {
+                leftList.classList.add('hidden');
                 emptyState.classList.remove('hidden');
+                document.getElementById('commentsRightEmpty').style.display = 'flex';
+                document.getElementById('commentsThread').style.display = 'none';
                 return;
             }
 
-            table.classList.remove('hidden');
             emptyState.classList.add('hidden');
+            leftList.classList.remove('hidden');
 
-            table.innerHTML = comments.map(comment => `
-                <li class="px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center space-x-3">
-                                <div class="flex-shrink-0">
-                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                        <i class="fas fa-user text-indigo-600"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center space-x-2">
-                                        <p class="text-sm font-medium text-gray-900">${comment.author_name}</p>
-                                        <span class="text-sm text-gray-500">${comment.author_email || 'No email'}</span>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${comment.is_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                                            ${comment.is_approved ? 'Approved' : 'Pending'}
-                                        </span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">${comment.content}</p>
-                                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                                        <span>Changelog: ${comment.changelog_title || 'Unknown'}</span>
-                                        <span>${formatDate(comment.created_at)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            ${!comment.is_approved ? `
-                                <button data-action="approve" data-comment-id="${comment.id}" 
-                                        class="text-green-600 hover:text-green-800 text-sm font-medium">
-                                    <i class="fas fa-check mr-1"></i>Approve
-                                </button>
-                            ` : ''}
-                            <button data-action="delete" data-comment-id="${comment.id}" 
-                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
-                                <i class="fas fa-trash mr-1"></i>Delete
-                            </button>
-                        </div>
+            leftList.innerHTML = groups.map(g => {
+                const pending = g.items.filter(c => !c.is_approved).length;
+                const last = g.items[g.items.length - 1];
+                return `<div class="cl-item${g.id === activeChangelogId ? ' active' : ''}" data-clid="${g.id}">
+                    <div class="cl-item-title">${escH(g.title)}</div>
+                    <div class="cl-item-meta">
+                        <span>${g.items.length} comment${g.items.length !== 1 ? 's' : ''}</span>
+                        ${pending ? `<span class="cl-badge cl-badge-pending">${pending} pending</span>` : ''}
+                        <span style="margin-left:auto">${humanDateShort(last.created_at)}</span>
                     </div>
-                </li>
-            `).join('');
-        }
+                </div>`;
+            }).join('');
 
-        function renderCommentsPagination(pagination) {
-            const paginationDiv = document.getElementById('commentsPagination');
-            if (commentsTotalPages <= 1) {
-                paginationDiv.classList.add('hidden');
-                return;
-            }
+            // click to open thread
+            leftList.querySelectorAll('.cl-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const cid = parseInt(el.dataset.clid, 10);
+                    openCommentThread(cid, byChangelog[cid]);
+                    leftList.querySelectorAll('.cl-item').forEach(x => x.classList.remove('active'));
+                    el.classList.add('active');
+                });
+            });
 
-            paginationDiv.classList.remove('hidden');
-
-            // Update pagination info
-            const startItem = ((pagination.page - 1) * pagination.limit) + 1;
-            const endItem = Math.min(pagination.page * pagination.limit, pagination.total);
-            
-            document.getElementById('commentsStartItem').textContent = startItem;
-            document.getElementById('commentsEndItem').textContent = endItem;
-            document.getElementById('commentsTotalItems').textContent = pagination.total;
-
-            // Render page numbers
-            const pageNumbers = document.getElementById('commentsPageNumbers');
-            pageNumbers.innerHTML = '';
-
-            for (let i = 1; i <= commentsTotalPages; i++) {
-                const button = document.createElement('button');
-                button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                    i === commentsCurrentPage 
-                        ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' 
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                }`;
-                button.textContent = i;
-                button.onclick = () => {
-                    commentsCurrentPage = i;
-                    loadComments();
-                };
-                pageNumbers.appendChild(button);
+            // re-open active thread if we have one
+            if (activeChangelogId && byChangelog[activeChangelogId]) {
+                openCommentThread(activeChangelogId, byChangelog[activeChangelogId]);
             }
         }
+
+        function openCommentThread(changelogId, group) {
+            activeChangelogId = changelogId;
+            document.getElementById('commentsRightEmpty').style.display = 'none';
+            const thread = document.getElementById('commentsThread');
+            thread.style.display = 'flex';
+
+            document.getElementById('commentsThreadTitle').textContent = group.title || 'Release note';
+            document.getElementById('commentsThreadMeta').textContent = `${group.items.length} comment${group.items.length !== 1 ? 's' : ''}`;
+
+            // Release card preview
+            const cardEl = document.getElementById('commentsThreadReleaseCard');
+            const bodyText = String(group.body || '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0, 200);
+            const labelColors = { feature:'background:#eff6ff;color:#1d4ed8', bug:'background:#fef2f2;color:#b91c1c', upcoming:'background:#f0fdf4;color:#15803d' };
+            const labelStyle = labelColors[String(group.label||'').toLowerCase()] || 'background:#f3f4f6;color:#374151';
+            cardEl.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px">
+                <div style="flex:1;min-width:0">
+                    ${group.label ? `<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font:700 10px/1.4 system-ui;${labelStyle};margin-bottom:6px">${escH(group.label)}</span>` : ''}
+                    <p style="font:600 13px/1.3 system-ui;color:#111827;margin:0 0 4px 0">${escH(group.title)}</p>
+                    ${bodyText ? `<p style="font:400 12px/1.5 system-ui;color:#6b7280;margin:0">${escH(bodyText)}${(group.body||'').length > 200 ? '…' : ''}</p>` : ''}
+                </div>
+            </div>`;
+
+            // Chat bubbles
+            const threadBody = document.getElementById('commentsThreadBody');
+            threadBody.innerHTML = group.items.map(c => {
+                const isAdmin = Number(c.author_is_admin) === 1;
+                const adminBadge = isAdmin ? `<span style="font:700 9px/1 system-ui;background:#eef2ff;color:#4f46e5;padding:1px 5px;border-radius:4px">admin</span>` : '';
+                const statusBadge = c.is_approved
+                    ? `<span class="cl-badge cl-badge-approved">approved</span>`
+                    : `<span class="cl-badge cl-badge-pending">pending</span>`;
+                const email = c.author_email ? `<span style="color:#9ca3af">${escH(c.author_email)}</span>` : '';
+                return `<div class="chat-bubble-wrap">
+                    <div class="chat-bubble-meta">${escH(c.author_name || 'Anonymous')} ${adminBadge} ${email} · ${humanDateShort(c.created_at)} ${statusBadge}</div>
+                    <div class="chat-bubble chat-bubble-in${isAdmin ? ' admin-bubble' : ''}">${escH(c.content).replace(/\n/g,'<br/>')}</div>
+                    <div class="chat-bubble-actions">
+                        ${!c.is_approved ? `<button class="chat-action-btn" data-action="approve" data-comment-id="${c.id}"><i class="fas fa-check" style="margin-right:3px"></i>Approve</button>` : ''}
+                        <button class="chat-action-btn chat-action-delete" data-action="delete" data-comment-id="${c.id}"><i class="fas fa-trash" style="margin-right:3px"></i>Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Scroll to bottom
+            threadBody.scrollTop = threadBody.scrollHeight;
+        }
+
+        function renderCommentsPagination() { /* no-op: replaced by split-view */ }
 
         async function approveComment(id) {
             try {
-                const response = await apiRequest(`/admin/comments/${id}/approve`, {
-                    method: 'POST'
-                });
-
-                if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.error || 'Failed to approve comment');
-                }
-
-                Utils.Toast.showSuccess('Comment approved successfully!');
+                const response = await apiRequest(`/admin/comments/${id}/approve`, { method: 'POST' });
+                if (!response.ok) { const d = await response.json(); throw new Error(d.error || 'Failed'); }
+                Utils.Toast.showSuccess('Comment approved!');
                 loadComments();
-            } catch (error) {
-                Utils.Toast.showError(error.message);
-            }
+            } catch (error) { Utils.Toast.showError(error.message); }
         }
 
         async function deleteComment(id) {
-            if (!confirm('Are you sure you want to delete this comment?')) {
-                return;
-            }
-
+            if (!confirm('Delete this comment?')) return;
             try {
-                const response = await apiRequest(`/admin/comments/${id}`, {
-                    method: 'DELETE'
-                });
-
-                if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.error || 'Failed to delete comment');
-                }
-
-                Utils.Toast.showSuccess('Comment deleted successfully!');
+                const response = await apiRequest(`/admin/comments/${id}`, { method: 'DELETE' });
+                if (!response.ok) { const d = await response.json(); throw new Error(d.error || 'Failed'); }
+                Utils.Toast.showSuccess('Comment deleted!');
                 loadComments();
-            } catch (error) {
-                Utils.Toast.showError(error.message);
-            }
+            } catch (error) { Utils.Toast.showError(error.message); }
         }
 
-        // Comments filter
-        document.getElementById('commentStatusFilter').addEventListener('change', () => {
-            commentsCurrentPage = 1;
-            loadComments();
-        });
+        document.getElementById('commentStatusFilter').addEventListener('change', () => { loadComments(); });
 
-        // Event delegation for comment actions
-        document.getElementById('commentsTable').addEventListener('click', (e) => {
-            const button = e.target.closest('button[data-action]');
-            if (!button) return;
-
-            const action = button.dataset.action;
-            const commentId = parseInt(button.dataset.commentId);
-
-            if (action === 'approve') {
-                approveComment(commentId);
-            } else if (action === 'delete') {
-                deleteComment(commentId);
-            }
+        // Event delegation — thread body actions
+        document.getElementById('commentsThreadBody').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const commentId = parseInt(btn.dataset.commentId, 10);
+            if (btn.dataset.action === 'approve') approveComment(commentId);
+            else if (btn.dataset.action === 'delete') deleteComment(commentId);
         });
 
         // Team Members functionality
@@ -1442,11 +1533,15 @@
         let teamMembers = [];
 
         // Team tab click handler
-        document.getElementById('teamTab').addEventListener('click', () => {
+        document.getElementById('teamTab').addEventListener('click', (e) => {
+            e.preventDefault();
             switchTab('team');
         });
 
-        function switchTab(tab) {
+        const TAB_URLS = { dashboard: '/dashboard', changelogs: '/releases', comments: '/comments', team: '/team' };
+        const PATH_TABS = { '/dashboard': 'dashboard', '/releases': 'changelogs', '/comments': 'comments', '/team': 'team' };
+
+        function switchTab(tab, pushState = true) {
             if (!currentUser.is_admin && (tab === 'comments' || tab === 'team')) {
                 Utils.Toast.showError('Admin access required for this feature');
                 return;
@@ -1468,6 +1563,10 @@
             selectedTab.classList.remove('border-transparent', 'text-gray-500');
             selectedContent.classList.remove('hidden');
 
+            if (pushState && TAB_URLS[tab]) {
+                history.pushState({ tab }, '', TAB_URLS[tab]);
+            }
+
             if (tab === 'comments') {
                 loadComments();
             } else if (tab === 'team') {
@@ -1478,6 +1577,11 @@
                 loadChangelogs();
             }
         }
+
+        window.addEventListener('popstate', (e) => {
+            const tab = (e.state && e.state.tab) || PATH_TABS[window.location.pathname] || 'dashboard';
+            switchTab(tab, false);
+        });
 
         async function loadTeamMembers() {
             try {
@@ -1542,6 +1646,9 @@
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.is_admin ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
                                             ${member.is_admin ? 'Admin' : 'User'}
                                         </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.is_paid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                            ${member.is_paid ? 'Paid' : 'Free'}
+                                        </span>
                                     </div>
                                     <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
                                         <span>Joined: ${formatDate(member.created_at)}</span>
@@ -1552,11 +1659,15 @@
                         </div>
                         <div class="flex items-center space-x-2">
                             ${member.id !== currentUser.id ? `
-                                <button data-action="edit" data-member-id="${member.id}" 
+                                <button data-action="toggle-paid" data-member-id="${member.id}" data-is-paid="${member.is_paid ? '1' : '0'}"
+                                        class="${member.is_paid ? 'text-yellow-600 hover:text-yellow-800' : 'text-green-600 hover:text-green-800'} text-sm font-medium">
+                                    <i class="fas fa-${member.is_paid ? 'lock-open' : 'lock'} mr-1"></i>${member.is_paid ? 'Revoke Paid' : 'Mark Paid'}
+                                </button>
+                                <button data-action="edit" data-member-id="${member.id}"
                                         class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
                                     <i class="fas fa-edit mr-1"></i>Edit
                                 </button>
-                                <button data-action="delete" data-member-id="${member.id}" 
+                                <button data-action="delete" data-member-id="${member.id}"
                                         class="text-red-600 hover:text-red-800 text-sm font-medium">
                                     <i class="fas fa-trash mr-1"></i>Delete
                                 </button>
@@ -1605,12 +1716,31 @@
         }
 
         // Team member modal functions
+        function renderTeamProjectList(selectedIds) {
+            const listEl = document.getElementById('teamProjectList');
+            listEl.innerHTML = projects.map(p => `
+                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" class="team-project-check rounded border-gray-300 text-indigo-600" value="${p.id}"
+                        ${!selectedIds || selectedIds.includes(p.id) ? 'checked' : ''}/>
+                    ${p.name}
+                </label>
+            `).join('');
+        }
+
+        document.getElementById('teamAllProjects').addEventListener('change', function() {
+            document.getElementById('teamProjectList').classList.toggle('hidden', this.checked);
+        });
+
         function showTeamMemberModal(member = null) {
             const modal = document.getElementById('teamMemberModal');
             const title = document.getElementById('teamModalTitle');
             const form = document.getElementById('teamMemberForm');
             const idField = document.getElementById('teamMemberId');
             const passwordField = document.getElementById('teamPassword');
+
+            renderTeamProjectList(null);
+            document.getElementById('teamAllProjects').checked = true;
+            document.getElementById('teamProjectList').classList.add('hidden');
 
             if (member) {
                 title.textContent = 'Edit Team Member';
@@ -1643,9 +1773,10 @@
                 const url = memberId ? `/admin/users/${memberId}` : '/admin/users';
                 const method = memberId ? 'PUT' : 'POST';
 
+                const { projectIds, ...userPayload } = formData;
                 const response = await apiRequest(url, {
                     method: method,
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(userPayload)
                 });
 
                 if (!response.ok) {
@@ -1653,8 +1784,35 @@
                     throw new Error(data.error || 'Failed to save team member');
                 }
 
+                const saved = await response.json();
+                const savedId = saved.user ? saved.user.id : parseInt(memberId, 10);
+
+                if (savedId && projectIds && projectIds.length) {
+                    await apiRequest(`/admin/users/${savedId}/projects`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ projectIds })
+                    });
+                }
+
                 Utils.Toast.showSuccess(`Team member ${memberId ? 'updated' : 'added'} successfully!`);
                 hideTeamMemberModal();
+                loadTeamMembers();
+            } catch (error) {
+                Utils.Toast.showError(error.message);
+            }
+        }
+
+        async function togglePaidStatus(id, newPaidState) {
+            try {
+                const response = await apiRequest(`/admin/users/${id}/paid`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ is_paid: newPaidState })
+                });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to update paid status');
+                }
+                Utils.Toast.showSuccess(`User marked as ${newPaidState ? 'Paid' : 'Free'}`);
                 loadTeamMembers();
             } catch (error) {
                 Utils.Toast.showError(error.message);
@@ -1693,15 +1851,20 @@
 
         document.getElementById('teamMemberForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
+            const allProjects = document.getElementById('teamAllProjects').checked;
+            const selectedProjectIds = allProjects
+                ? projects.map(p => p.id)
+                : Array.from(document.querySelectorAll('.team-project-check:checked')).map(cb => parseInt(cb.value, 10));
+
             const formData = {
                 username: document.getElementById('teamUsername').value,
                 email: document.getElementById('teamEmail').value,
                 password: document.getElementById('teamPassword').value,
-                role: document.getElementById('teamRole').value
+                role: document.getElementById('teamRole').value,
+                projectIds: selectedProjectIds
             };
 
-            // Remove password if empty (for editing)
             if (!formData.password) {
                 delete formData.password;
             }
@@ -1723,7 +1886,10 @@
             const action = button.dataset.action;
             const memberId = parseInt(button.dataset.memberId);
 
-            if (action === 'edit') {
+            if (action === 'toggle-paid') {
+                const isPaid = button.dataset.isPaid === '1';
+                togglePaidStatus(memberId, !isPaid);
+            } else if (action === 'edit') {
                 const member = teamMembers.find(m => m.id === memberId);
                 if (member) {
                     showTeamMemberModal(member);
