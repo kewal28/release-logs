@@ -81,6 +81,21 @@ async function migrateSchema(pool) {
     `);
   }
 
+  // project ↔ collaborator — must exist before default-project backfill (uses LEFT JOIN project_users)
+  if (!(await tableExists(pool, 'project_users'))) {
+    await pool.execute(`
+      CREATE TABLE project_users (
+        project_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (project_id, user_id),
+        KEY idx_pu_user (user_id),
+        CONSTRAINT fk_pu_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+        CONSTRAINT fk_pu_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  }
+
   if (!(await columnExists(pool, 'changelogs', 'slug'))) {
     await pool.execute('ALTER TABLE changelogs ADD COLUMN slug VARCHAR(255) NULL UNIQUE');
   }
@@ -229,21 +244,6 @@ async function migrateSchema(pool) {
     SET upvote_count = (SELECT COUNT(*) FROM votes v WHERE v.changelog_id = c.id AND v.vote_type = 'upvote'),
         downvote_count = (SELECT COUNT(*) FROM votes v WHERE v.changelog_id = c.id AND v.vote_type = 'downvote')
   `);
-
-  // project ↔ collaborator (team members invited to a project)
-  if (!(await tableExists(pool, 'project_users'))) {
-    await pool.execute(`
-      CREATE TABLE project_users (
-        project_id INT NOT NULL,
-        user_id INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (project_id, user_id),
-        KEY idx_pu_user (user_id),
-        CONSTRAINT fk_pu_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-        CONSTRAINT fk_pu_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `);
-  }
 
   // comments — threading + optional staff author + nullable email (guest)
   if (!(await columnExists(pool, 'comments', 'parent_id'))) {
